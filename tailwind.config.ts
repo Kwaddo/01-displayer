@@ -7,12 +7,15 @@ export default {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    extend: {
-      colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
-      },
+    colors: {
+      "t-black": "#29353C",
+      "t-darkb": "#44576D",
+      "t-normalg": "#768A96",
+      "t-normalb": "#AAC7D8",
+      "t-lightb": "#DFEBF6",
+      "t-lightg": "#E6E6E6",
     },
+    extend: {},
   },
   plugins: [],
 } satisfies Config;
