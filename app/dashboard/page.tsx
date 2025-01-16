@@ -645,7 +645,7 @@ export default function HomePage() {
             setError(data.error || 'Failed to fetch notebook content');
           }
         } catch (error) {
-          setError('An error occurred while fetching notes');
+          setError('An error occurred while fetching notes' + error);
         }
       };
 
@@ -672,7 +672,7 @@ export default function HomePage() {
         setError(data.error || 'Failed to save notes');
       }
     } catch (error) {
-      setError('An error occurred while saving notes');
+      setError('An error occurred while saving notes' + error);
     }
   }, []);
 
