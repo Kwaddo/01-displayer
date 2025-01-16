@@ -6,7 +6,7 @@ import { fetchGraphQL } from '@/utils/info';
 import { logout } from '@/utils/user';
 import styles from '@/styles/home.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUser, faSignOut, faBarChart, faChartLine, faTrophy, faGamepad } from '@fortawesome/free-solid-svg-icons';
+import { faUser, faSignOut, faBarChart, faChartLine, faTrophy, faGamepad, faNoteSticky } from '@fortawesome/free-solid-svg-icons';
 import Minesweeper from '@/components/minesweeper';
 
 interface Group {
@@ -846,6 +846,12 @@ export default function HomePage() {
             className={styles.iconButton}
             onClick={() => toggleVisibility('container1')}>
             <FontAwesomeIcon icon={faUser} />
+          </button>
+          <button
+            style={{ backgroundColor: visibleState.container2 ? '#888b8d' : '' }}
+            className={styles.iconButton}
+            onClick={() => toggleVisibility('container2')}>
+            <FontAwesomeIcon icon={faNoteSticky} />
           </button>
           <button
             style={{ backgroundColor: visibleState.chartContainer1 ? '#888b8d' : '' }}
