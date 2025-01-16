@@ -6,11 +6,12 @@ const sql = neon(process.env.DATABASE_URL!);
 export async function POST(request: Request) {
   try {
     const { token, notebookcontent } = await request.json();
+
     const result = await sql`
       UPDATE users
       SET notebookcontent = ${notebookcontent}
       WHERE token = ${token}
-      RETURNING *;  // Return the updated rows
+      RETURNING *;  -- Return the updated rows
     `;
 
     if (result.length === 0) {
