@@ -132,6 +132,8 @@ export default function HomePage() {
     };
   }, []);
   const [userData, setUserData] = useState<User | null>(null);
+  const [userToken, setUserToken] = useState(localStorage.getItem('jwtToken'));
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [xpDistribution, setXpDistribution] = useState<XpData[]>([]);
   const [gameData, setGameData] = useState<GameData[]>([]);
   const [xpAmount, setXpAmount] = useState<number>(0);
@@ -143,6 +145,7 @@ export default function HomePage() {
   const [isClient, setIsClient] = useState(false);
   const [notebookContent, setNotebookContent] = useState('');
   const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
+  const [isDbInitialized, setIsDbInitialized] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const barChartRef = useRef(null);
@@ -231,6 +234,53 @@ export default function HomePage() {
       [containerName as keyof typeof visibleState]: !prevState[containerName as keyof typeof visibleState],
     }));
   };
+
+  useEffect(() => {
+    const userId = userData?.login; 
+    if (isDbInitialized && userId && userToken) {
+      const insertUserData = async () => {
+        try {
+          const response = await fetch('/api/insertUser', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, token: userToken }),
+          });
+
+          const data = await response.json();
+          if (response.ok) {
+            console.log(data.message);
+            const fetchNotes = async () => {
+              try {
+                const response = await fetch('/api/getNotes', {
+                  method: 'GET',
+                  headers: {
+                    'Authorization': userId, 
+                  },
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                  setNotebookContent(data.notebookcontent || '');
+                } else {
+                  setError(data.error || 'Failed to fetch notebook content');
+                }
+              } catch (error: any) {
+                setError('An error occurred while fetching notes: ' + error.message);
+              }
+            };
+
+            fetchNotes();
+          } else {
+            setError(data.error || 'Failed to insert user data');
+          }
+        } catch (error: any) {
+          setError('Error inserting user data: ' + error.message);
+        }
+      };
+
+      insertUserData();
+    }
+  }, [isDbInitialized, userData, userToken]);
 
   useEffect(() => {
     if (!isClient) return;
@@ -598,62 +648,33 @@ export default function HomePage() {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('jwtToken');
-    const userId = userData?.login;
+    const initializeDatabase = async () => {
+      try {
+        const response = await fetch('/api/initDb');  // Call to check DB initialization
+        const data = await response.json();
 
-    if (token && userId) {
-      const insertUserData = async () => {
-        try {
-          const response = await fetch('/api/insertUser', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ userId, token }),
-          });
-
-          const data = await response.json();
-          if (response.ok) {
-            console.log(data.message);
-          } else {
-            console.error(data.error);
-          }
-        } catch (error) {
-          console.error('Error inserting user data:', error);
+        if (response.ok) {
+          console.log(data.message);
+          setIsDbInitialized(true);
+        } else {
+          console.error(data.error);
+          setError('Database initialization failed');
         }
-      };
-      insertUserData();
+      } catch (error) {
+        console.error('Error initializing database:', error);
+        setError('Failed to initialize database');
+      }
+    };
+
+    initializeDatabase();
+  }, []);
+
+  const saveNotes = useCallback(async (newContent: any) => {
+    if (!isDbInitialized) {
+      setError('Database not initialized');
+      return;
     }
-  }, [userData]);
 
-  useEffect(() => {
-    const token = localStorage.getItem('jwtToken');
-    if (token && userData && pathname === '/dashboard') {
-      const fetchNotes = async () => {
-        try {
-          const response = await fetch('/api/getNotes', {
-            method: 'GET',
-            headers: {
-              'Authorization': token,
-            },
-          });
-
-          const data = await response.json();
-          if (response.ok) {
-            setNotebookContent(data.notebookcontent || '');
-          } else {
-            setError(data.error || 'Failed to fetch notebook content');
-          }
-        } catch (error) {
-          setError('An error occurred while fetching notes' + error);
-        }
-      };
-
-      fetchNotes();
-    }
-  }, [userData, pathname]);
-
-  const saveNotes = useCallback(async (newContent: string) => {
     try {
       const response = await fetch('/api/saveNotes', {
         method: 'POST',
@@ -670,10 +691,10 @@ export default function HomePage() {
       if (!response.ok) {
         setError(data.error || 'Failed to save notes');
       }
-    } catch (error) {
-      setError('An error occurred while saving notes' + error);
+    } catch (error: any) {
+      setError('An error occurred while saving notes: ' + error.message);
     }
-  }, []);
+  }, [isDbInitialized]);
 
   const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = event.target.value;
