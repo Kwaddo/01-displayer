@@ -1,8 +1,9 @@
+// pages/index.tsx
 'use client'
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Windows98Splash from '@/components/splash';  // Import your splash screen component
+import Windows98Splash from '@/components/splash';
 
 const Index = () => {
   const router = useRouter();

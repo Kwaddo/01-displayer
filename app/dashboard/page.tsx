@@ -653,7 +653,6 @@ export default function HomePage() {
     }
   }, [userData, pathname]);
 
-  // Debounced function to save the notes after 5 seconds of typing
   const saveNotes = useCallback(async (newContent: string) => {
     try {
       const response = await fetch('/api/saveNotes', {
