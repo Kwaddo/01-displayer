@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { fetchGraphQL } from '@/utils/info';
 import { logout } from '@/utils/user';
 import styles from '@/styles/home.module.css';
@@ -145,7 +145,6 @@ export default function HomePage() {
   const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
   const [isDbInitialized, setIsDbInitialized] = useState(false);
   const router = useRouter();
-  const pathname = usePathname();
   const barChartRef = useRef(null);
   const xpChartRef = useRef(null);
   const gameRef = useRef(null);
@@ -263,8 +262,8 @@ export default function HomePage() {
                 } else {
                   setError(data.error || 'Failed to fetch notebook content');
                 }
-              } catch (error: any) {
-                setError('An error occurred while fetching notes: ' + error.message);
+              } catch (error) {
+                setError('An error occurred while fetching notes: ' + error);
               }
             };
 
@@ -272,8 +271,8 @@ export default function HomePage() {
           } else {
             setError(data.error || 'Failed to insert user data');
           }
-        } catch (error: any) {
-          setError('Error inserting user data: ' + error.message);
+        } catch (error) {
+          setError('Error inserting user data: ' + error);
         }
       };
 
@@ -668,7 +667,7 @@ export default function HomePage() {
     initializeDatabase();
   }, []);
 
-  const saveNotes = useCallback(async (newContent: any) => {
+  const saveNotes = useCallback(async (newContent: string) => {
     if (!isDbInitialized) {
       setError('Database not initialized');
       return;
@@ -690,8 +689,8 @@ export default function HomePage() {
       if (!response.ok) {
         setError(data.error || 'Failed to save notes');
       }
-    } catch (error: any) {
-      setError('An error occurred while saving notes: ' + error.message);
+    } catch (error) {
+      setError('An error occurred while saving notes: ' + error);
     }
   }, [isDbInitialized]);
 
