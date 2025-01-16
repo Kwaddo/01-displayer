@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { fetchGraphQL } from '@/utils/info';
 import { logout } from '@/utils/user';
 import styles from '@/styles/home.module.css';
@@ -144,6 +144,7 @@ export default function HomePage() {
   const [notebookContent, setNotebookContent] = useState('');
   const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
   const router = useRouter();
+  const pathname = usePathname();
   const barChartRef = useRef(null);
   const xpChartRef = useRef(null);
   const gameRef = useRef(null);
@@ -230,10 +231,6 @@ export default function HomePage() {
       [containerName as keyof typeof visibleState]: !prevState[containerName as keyof typeof visibleState],
     }));
   };
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
 
   useEffect(() => {
     if (!isClient) return;
@@ -630,28 +627,31 @@ export default function HomePage() {
   }, [userData]);
 
   useEffect(() => {
-    const fetchNotes = async () => {
-      try {
-        const response = await fetch('/api/getNotes', {
-          method: 'GET',
-          headers: {
-            'Authorization': localStorage.getItem('jwtToken') || '',
-          },
-        });
+    const token = localStorage.getItem('jwtToken');
+    if (token && userData && pathname === '/dashboard') {
+      const fetchNotes = async () => {
+        try {
+          const response = await fetch('/api/getNotes', {
+            method: 'GET',
+            headers: {
+              'Authorization': token,
+            },
+          });
 
-        const data = await response.json();
-        if (response.ok) {
-          setNotebookContent(data.notebookcontent);
-        } else {
-          setError(data.error || 'Failed to fetch notebook content');
+          const data = await response.json();
+          if (response.ok) {
+            setNotebookContent(data.notebookcontent || '');
+          } else {
+            setError(data.error || 'Failed to fetch notebook content');
+          }
+        } catch (error) {
+          setError('An error occurred while fetching notes');
         }
-      } catch (error) {
-        setError('An error occurred while fetching notes');
-      }
-    };
+      };
 
-    fetchNotes();
-  }, []);
+      fetchNotes();
+    }
+  }, [userData, pathname]);
 
   // Debounced function to save the notes after 5 seconds of typing
   const saveNotes = useCallback(async (newContent: string) => {
@@ -675,6 +675,7 @@ export default function HomePage() {
       setError('An error occurred while saving notes');
     }
   }, []);
+
   const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = event.target.value;
     setNotebookContent(newContent);
