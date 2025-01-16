@@ -355,6 +355,7 @@
     .localBody :global(body) {
         overflow: auto;
     }
+
     .chartContainer {
         width: 90%;
         margin: 0 auto;
@@ -470,8 +471,10 @@
 
 @media screen and (max-width: 1366px) {
     .acontainers {
-        gap: 20px;  /* Reduce gap for smaller screens */
-        padding: 0 15px;  /* Add some padding on the sides */
+        gap: 20px;
+        /* Reduce gap for smaller screens */
+        padding: 0 15px;
+        /* Add some padding on the sides */
     }
 
     .chartContainer {
@@ -484,8 +487,18 @@
     .acontainers {
         gap: 15px;
     }
-    
+
     .chartContainer {
-        width: 95%;  /* Slightly reduce width */
+        width: 95%;
     }
+}
+
+.textarea {
+    width: 100%;
+    height: 300px;
+    margin-top: 20px;
+    padding: 10px;
+    font-size: 16px;
+    background-color: #f1f1f1;
+    border: 2px solid #008080;
 }
