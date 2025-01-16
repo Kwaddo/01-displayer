@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { fetchGraphQL } from '@/utils/info';
 import { logout } from '@/utils/user';
@@ -141,6 +141,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
+  const [notebookContent, setNotebookContent] = useState('');
+  const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
   const router = useRouter();
   const barChartRef = useRef(null);
   const xpChartRef = useRef(null);
@@ -627,6 +629,62 @@ export default function HomePage() {
     }
   }, [userData]);
 
+  useEffect(() => {
+    const fetchNotes = async () => {
+      try {
+        const response = await fetch('/api/getNotes', {
+          method: 'GET',
+          headers: {
+            'Authorization': localStorage.getItem('jwtToken') || '',
+          },
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+          setNotebookContent(data.notebookcontent);
+        } else {
+          setError(data.error || 'Failed to fetch notebook content');
+        }
+      } catch (error) {
+        setError('An error occurred while fetching notes');
+      }
+    };
+
+    fetchNotes();
+  }, []);
+
+  // Debounced function to save the notes after 5 seconds of typing
+  const saveNotes = useCallback(async (newContent: string) => {
+    try {
+      const response = await fetch('/api/saveNotes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token: localStorage.getItem('jwtToken'),
+          notebookcontent: newContent,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error || 'Failed to save notes');
+      }
+    } catch (error) {
+      setError('An error occurred while saving notes');
+    }
+  }, []);
+  const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newContent = event.target.value;
+    setNotebookContent(newContent);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    const newTimeoutId = setTimeout(() => saveNotes(newContent), 5000);
+    setTimeoutId(newTimeoutId);
+  };
+
   if (loading) return <p className={styles.loading}>Loading...</p>;
   if (error) return <p className={styles.error}>{error}</p>;
 
@@ -683,6 +741,12 @@ export default function HomePage() {
                 </button>
               </div>
             </div>
+            <textarea
+              className={styles.textarea}
+              value={notebookContent}
+              onChange={handleChange}
+              placeholder="Write your notes here..."
+            />
           </div>
         )}
       </div>
