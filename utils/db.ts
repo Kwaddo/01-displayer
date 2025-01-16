@@ -1,13 +1,15 @@
-import Database from 'better-sqlite3';
+import { neon } from "@neondatabase/serverless";
 
-const db = new Database('./data/database.db', { verbose: console.log });
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id TEXT UNIQUE,
-    token TEXT,
-    notebookcontent TEXT,
-    color_id INTEGER
-  );
-`).run();
-export default db;
+const sql = neon(process.env.DATABASE_URL!);
+
+export async function getData() {
+    const data = await sql`SELECT * FROM users;`;
+    return data;
+}
+
+export async function getUserByToken(token: string) {
+    const result = await sql`
+      SELECT * FROM users WHERE token = ${token}
+    `;
+    return result[0];
+}

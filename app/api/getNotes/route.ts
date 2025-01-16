@@ -1,32 +1,30 @@
 // app/api/getNotes/route.ts
 import { NextResponse } from 'next/server';
-import db from '@/utils/db'; // Import the database instance
+import { neon } from '@neondatabase/serverless';
 
-// Define the User type
-interface User {
-  id: number;
-  user_id: string;
-  token: string;
-  notebookcontent: string | null;  // Nullable field
-  color_id: number | null;
-}
+const sql = neon(process.env.DATABASE_URL!);
 
 export async function GET(request: Request) {
-  const token = request.headers.get('Authorization');
-  
-  if (!token) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    const token = request.headers.get('Authorization');
+
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Fetch user data by token
+    const user = await sql`
+      SELECT * FROM users WHERE token = ${token}
+    `;
+
+    if (user.length === 0) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const notebookContent = user[0].notebookcontent || '';
+    return NextResponse.json({ notebookcontent: notebookContent });
+  } catch (error) {
+    console.error('Error fetching notes:', error);
+    return NextResponse.json({ error: 'Failed to fetch notes' }, { status: 500 });
   }
-
-  // Get the user from the database based on the token
-  const user = db.prepare('SELECT * FROM users WHERE token = ?').get(token) as User | undefined;  // Explicitly type the result
-
-  console.log(user);  // Check the structure of the user object in the console
-
-  if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
-  }
-
-  // Now TypeScript knows that 'user' has a 'notebookcontent' property
-  return NextResponse.json({ notebookcontent: user.notebookcontent || '' });
 }

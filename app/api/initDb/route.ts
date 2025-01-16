@@ -1,21 +1,17 @@
 import { NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-
-// Initialize database
-const db = new Database('./data/database.db', { verbose: console.log });
-
-// Create users table if not already created
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id TEXT UNIQUE,
-    token TEXT,
-    notebookcontent TEXT,
-    color_id INTEGER
-  )
-`).run();
+import { getData } from '@/utils/db'; 
 
 export async function GET() {
-  // This will check if the table exists or if it needs to be created
-  return NextResponse.json({ message: 'Database and table checked/created successfully.' });
+  try {
+    const posts = await getData(); 
+    return NextResponse.json({
+      message: 'Database connected successfully and fetched data.',
+      posts: posts  
+    });
+  } catch (error) {
+    console.error('Error querying the database:', error);
+    return NextResponse.json({
+      error: 'Failed to fetch data from the database.'
+    }, { status: 500 });
+  }
 }

@@ -1,45 +1,37 @@
+// app/api/insertUser/route.ts
 import { NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
+import { neon } from '@neondatabase/serverless';
 
-const db = new Database('./data/database.db', { verbose: console.log });
-
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id TEXT UNIQUE,
-    token TEXT,
-    notebookcontent TEXT,
-    color_id INTEGER
-  )
-`).run();
+const sql = neon(process.env.DATABASE_URL!);
 
 export async function POST(request: Request) {
+  try {
     const { userId, token } = await request.json();
-    if (!userId || !token) {
-        return NextResponse.json({ error: 'userId and token are required' }, { status: 400 });
+
+    // Check if user already exists
+    const existingUser = await sql`
+      SELECT * FROM users WHERE user_id = ${userId}
+    `;
+    
+    if (existingUser.length > 0) {
+      return NextResponse.json({
+        message: 'User already exists.',
+      });
     }
 
-    try {
-        const existingUser = db.prepare('SELECT * FROM users WHERE user_id = ?').get(userId);
-        
-        if (existingUser) {
-            const updateStmt = db.prepare(`
-                UPDATE users
-                SET token = ?
-                WHERE user_id = ?
-            `);
-            updateStmt.run(token, userId);
-            return NextResponse.json({ message: 'Token updated successfully' }, { status: 200 });
-        } else {
-            const insertStmt = db.prepare(`
-                INSERT INTO users (user_id, token)
-                VALUES (?, ?)
-            `);
-            insertStmt.run(userId, token);
-            return NextResponse.json({ message: 'User data inserted successfully' }, { status: 200 });
-        }
-    } catch (error) {
-        console.error('Database error:', error);
-        return NextResponse.json({ error: 'Failed to insert or update user data' }, { status: 500 });
-    }
+    // Insert new user into the database
+    await sql`
+      INSERT INTO users (user_id, token)
+      VALUES (${userId}, ${token})
+    `;
+
+    return NextResponse.json({
+      message: 'User data inserted successfully.',
+    });
+  } catch (error) {
+    console.error('Error inserting user data:', error);
+    return NextResponse.json({
+      error: 'Failed to insert user data.',
+    }, { status: 500 });
+  }
 }
