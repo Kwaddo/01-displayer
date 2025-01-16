@@ -1,0 +1,77 @@
+body {
+    min-height: 100vh;
+    width: 100%;
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    font-family: "MS Sans Serif", "Fixedsys", sans-serif;
+    box-sizing: border-box;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    background: linear-gradient(45deg, theme('colors.t-normalb') 25%, theme('colors.t-darkb') 62.5%, theme('colors.t-black') 100%);
+    background-size: 400% 400%;
+    animation: Animation 5s ease infinite;
+    transition: background 1s ease-in-out;
+    background-color: theme('colors.t-darkb');
+    transition: background-color 1s ease-in-out;
+}
+
+@media (max-width: 768px) {
+    body {
+        overflow: auto;
+    }
+}
+
+@media (min-width: 769px) {
+    body {
+        overflow: hidden;
+    }
+}
+
+
+body.dashboard-background {
+    min-height: 100vh;
+    width: 100%;
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    font-family: "MS Sans Serif", "Fixedsys", sans-serif;
+    box-sizing: border-box;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    background: linear-gradient(45deg, #00bdbd 25%, #008080 50%, #000000 100%);
+    background-size: 400% 400%;
+    animation: Animation 5s ease infinite;
+    background-color: #008080; /* Simplified to a single color */
+    transition: background-color 1s ease-in-out;
+}
+
+@keyframes Animation {
+    0% {
+        background-position: 10% 0%
+    }
+
+    50% {
+        background-position: 91% 100%
+    }
+
+    100% {
+        background-position: 10% 0%
+    }
+}
+
+@media (max-width: 900px) {
+    body.dashboard-background {
+        overflow: auto;
+    }
+}
+
+@media (min-width: 900px) {
+    body.dashboard-background {
+        overflow: hidden;
+    }
+}

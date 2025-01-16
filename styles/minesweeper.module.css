@@ -1,0 +1,96 @@
+.minesweeperContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    position: relative;
+}
+
+.board {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: #008080;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.row {
+    display: flex;
+    gap: 2px;
+}
+
+.cell {
+    width: 30px;
+    height: 30px;
+    border: none;
+    background: #66B3B3;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.cell:hover {
+    background: #004C4C;
+}
+
+.cell.revealed {
+    background: #004d4d;
+    color: white;
+}
+
+.cell.mine {
+    background: #ff4444;
+}
+
+.popup {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 4px;
+}
+
+.popupContent {
+    background: #008080;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    color: white;
+}
+
+.popupContent button {
+    background: #66B3B3;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.popupContent button:hover {
+    background: #004C4C;
+}
+
+@media screen and (max-width: 768px) {
+    .cell {
+        width: 20px;
+        height: 20px;
+        font-size: 12px;
+    }
+
+    .board {
+        gap: 1px;
+        padding: 5px;
+    }
+
+}

@@ -1,0 +1,491 @@
+.hidden {
+    display: none;
+}
+
+@keyframes Animation {
+    0% {
+        background-position: 10% 0%
+    }
+
+    50% {
+        background-position: 91% 100%
+    }
+
+    100% {
+        background-position: 10% 0%
+    }
+}
+
+.blackbar {
+    background-color: #008080;
+    height: 10px;
+    width: 100%;
+}
+
+.acontainers {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+}
+
+.chartcontainers {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    translate: 0 -10px;
+}
+
+.chartContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    background: #c2c6ca;
+    font-size: 12px;
+    -webkit-font-smoothing: none;
+    box-shadow: 0.5px 0.5px 0 0.5px black, inset 1px 1px #C2C6CA, inset -1px -1px #85898d, inset 2px 2px white;
+    position: relative;
+    box-sizing: border-box;
+    margin-bottom: 20px;
+    height: 100%;
+    padding-top: 30px;
+}
+
+.windowbar {
+    position: fixed;
+    height: 26px;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 10px 20px;
+    text-align: center;
+    background: #c2c6ca;
+    box-shadow: 0.5px 0.5px 0 0.5px black, inset 1px 1px #C2C6CA, inset -1px -1px #85898d, inset 2px 2px white;
+    font-size: 14px;
+    z-index: 9999;
+}
+
+.buttonContainer {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    align-items: center;
+}
+
+.iconButton {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: transparent;
+    box-shadow: 0.5px 0.5px 0 0.5px black, inset 1px 1px #C2C6CA, inset -1px -1px #85898d, inset 2px 2px white;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 10px;
+    width: 40px;
+    height: 40px;
+    transition: background-color 0.2s ease-in-out;
+    translate: -20px -7px;
+}
+
+.iconButton:hover {
+    background-color: #e6e6e6;
+    box-shadow: inset -1px -1px 3px #a0a0a0, 1px 1px 6px rgba(0, 0, 0, 0.4);
+}
+
+.iconButton:active {
+    background-color: #d0d0d0;
+    box-shadow: inset -2px -2px 5px #a0a0a0, 1px 1px 5px rgba(0, 0, 0, 0.4);
+}
+
+.iconButton i {
+    font-size: 22px;
+}
+
+.fas {
+    font-family: "Font Awesome 5 Free", sans-serif;
+    font-weight: 900;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 95%;
+    padding: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    background: #c2c6ca;
+    font-size: 12px;
+    -webkit-font-smoothing: none;
+    box-shadow: 0.5px 0.5px 0 0.5px black, inset 1px 1px #C2C6CA, inset -1px -1px #85898d, inset 2px 2px white;
+    position: relative;
+    box-sizing: border-box;
+    margin-bottom: 20px;
+}
+
+.bar {
+    display: flex;
+    flex-flow: row nowrap;
+    font-weight: bold;
+    justify-content: space-between;
+    width: 100%;
+    height: 22px;
+    color: white;
+    background: #00a;
+    padding: 5px;
+    margin: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+    box-sizing: border-box;
+    z-index: 10;
+}
+
+.fullscreen.bar {
+    z-index: 1000;
+}
+
+.barIcons {
+    display: flex;
+    flex-direction: row;
+}
+
+@keyframes fullscreenAnimation {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.fullscreen {
+    width: 100vw;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 500;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    animation: fullscreenAnimation 0.2s ease-out forwards;
+}
+
+.fullscreenExit {
+    animation: fullscreenAnimation 0.2s ease-in reverse;
+}
+
+.fullscreen,
+.fullscreenExit {
+    transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+}
+
+.bar p {
+    margin: 0;
+}
+
+.svgButton {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+}
+
+.svgButton svg {
+    fill: currentColor;
+    transition: transform 0.2s;
+}
+
+.bar svg {
+    background-color: #C2C6CA;
+    padding: 4px;
+    translate: 5px -1px;
+    margin: 3px 3px 3px 4px;
+    box-shadow: 0.5px 0.5px 0 0.5px black, inset 1px 1px #C2C6CA, inset -1px -1px #85898d, inset 2px 2px white;
+}
+
+.bara {
+    display: flex;
+    flex-flow: row nowrap;
+    font-weight: bold;
+    justify-content: space-between;
+    width: 100%;
+    height: 26px;
+    color: white;
+    background: #00a;
+    padding: 5px;
+    margin: 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    box-sizing: border-box;
+    z-index: 100;
+}
+
+.bara p {
+    margin: 0;
+}
+
+.bara svg {
+    background-color: #C2C6CA;
+    padding: 4px;
+    translate: 5px -1px;
+    margin: 3px 3px 3px 4px;
+    box-shadow: 0.5px 0.5px 0 0.5px black, inset 1px 1px #C2C6CA, inset -1px -1px #85898d, inset 2px 2px white;
+}
+
+.title {
+    font-size: 1.25rem;
+    line-height: 1.5rem;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 1rem;
+    width: 100%;
+    margin-top: 50px;
+    color: theme('colors.t-black');
+    text-decoration: double;
+}
+
+@media (min-width: 640px) {
+    .title {
+        font-size: 1.75rem;
+        line-height: 2.25rem;
+        margin-bottom: 1rem;
+    }
+}
+
+.form {
+    width: 100%;
+    padding: 1rem;
+    padding: 1.5rem;
+}
+
+.inputGroup {
+    margin-bottom: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+}
+
+@media (min-width: 640px) {
+    .inputGroup {
+        margin-bottom: 1rem;
+    }
+}
+
+.cardBody p {
+    font-size: 18px;
+}
+
+.label {
+    display: block;
+    font-size: 1rem;
+    font-weight: 500;
+    margin-bottom: 0.375rem;
+    width: 100%;
+}
+
+@media (min-width: 640px) {
+    .label {
+        font-size: 1.125rem;
+        margin-bottom: 0.5rem;
+    }
+}
+
+.input {
+    width: 100%;
+    padding: 0.375rem;
+    box-sizing: border-box;
+    padding-left: 0.5rem;
+}
+
+@media (min-width: 640px) {
+    .input {
+        padding: 0.5rem;
+        padding-left: 0.75rem;
+    }
+}
+
+.error {
+    font-size: 0.75rem;
+    margin-top: 0.375rem;
+    width: 100%;
+}
+
+@media (min-width: 640px) {
+    .error {
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+    }
+}
+
+.button {
+    width: 100%;
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+    font-size: 0.875rem;
+}
+
+@media (min-width: 640px) {
+    .button {
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+        font-size: 1rem;
+    }
+}
+
+.button:disabled {
+    cursor: not-allowed;
+}
+
+@media screen and (max-width: 1000px) {
+    .localBody :global(body) {
+        overflow: auto;
+    }
+    .chartContainer {
+        width: 90%;
+        margin: 0 auto;
+        margin-bottom: 15px;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .acontainers {
+        margin-top: 40px;
+        padding: 0;
+        flex-direction: column;
+        gap: 0px;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+    }
+
+    .chartcontainers {
+        width: 100%;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .container {
+        width: 90%;
+        margin: 0 auto;
+        padding: 1rem;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+}
+
+@media screen and (max-width: 900px) {
+    .localBody :global(body) {
+        overflow: auto;
+    }
+
+    .acontainers {
+        margin-top: 40px;
+        flex-direction: column;
+        gap: 0px;
+        width: 100%;
+        align-items: center;
+    }
+
+    .chartcontainers,
+    .container,
+    .chartContainer {
+        width: 100%;
+        margin: 0 auto;
+        margin-bottom: 15px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+}
+
+@media screen and (max-height: 800px) {
+    .chartContainer {
+        width: 100%;
+        margin: 0 auto;
+        margin-bottom: 15px;
+    }
+}
+
+@media screen and (max-width: 350) {
+
+    .chartcontainers,
+    .container,
+    .chartContainer {
+        width: 95%;
+        margin: 0 auto;
+        margin-bottom: 15px;
+    }
+
+    .fullscreen {
+        width: 100vw;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 1024px) {
+    .acontainers {
+        margin-bottom: 40px;
+    }
+}
+
+@media screen and (max-width: 1024px) {
+    .chartContainer {
+        padding-top: 25px;
+    }
+}
+
+.iconButtonPressed {
+    background-color: #888b8d;
+    transform: translateY(1px);
+    box-shadow: inset -1px -1px #004d4f, inset 1px 1px #85898d, inset -2px -2px white, 0.5px 0.5px 0 0.5px black;
+}
+
+@media screen and (max-width: 1366px) {
+    .acontainers {
+        gap: 20px;  /* Reduce gap for smaller screens */
+        padding: 0 15px;  /* Add some padding on the sides */
+    }
+
+    .chartContainer {
+        padding: 1rem;
+        padding-top: 30px;
+    }
+}
+
+@media screen and (max-width: 1200px) {
+    .acontainers {
+        gap: 15px;
+    }
+    
+    .chartContainer {
+        width: 95%;  /* Slightly reduce width */
+    }
+}
