@@ -132,8 +132,6 @@ export default function HomePage() {
     };
   }, []);
   const [userData, setUserData] = useState<User | null>(null);
-  const [userToken, setUserToken] = useState(localStorage.getItem('jwtToken'));
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [xpDistribution, setXpDistribution] = useState<XpData[]>([]);
   const [gameData, setGameData] = useState<GameData[]>([]);
   const [xpAmount, setXpAmount] = useState<number>(0);
@@ -236,6 +234,7 @@ export default function HomePage() {
   };
 
   useEffect(() => {
+    const userToken =  localStorage.getItem('jwtToken');
     const userId = userData?.login; 
     if (isDbInitialized && userId && userToken) {
       const insertUserData = async () => {
@@ -280,7 +279,7 @@ export default function HomePage() {
 
       insertUserData();
     }
-  }, [isDbInitialized, userData, userToken]);
+  }, [isDbInitialized, userData]);
 
   useEffect(() => {
     if (!isClient) return;
