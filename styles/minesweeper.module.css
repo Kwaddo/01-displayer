@@ -21,8 +21,8 @@
 }
 
 .cell {
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
     border: none;
     background: #66B3B3;
     cursor: pointer;
@@ -83,8 +83,6 @@
 
 @media screen and (max-width: 768px) {
     .cell {
-        width: 20px;
-        height: 20px;
         font-size: 12px;
     }
 
@@ -93,4 +91,12 @@
         padding: 5px;
     }
 
+}
+
+@media screen and (max-width: 400px) {
+    .cell {
+        width: 25px;
+        height: 25px;
+        font-size: 12px;
+    }
 }

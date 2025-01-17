@@ -4,7 +4,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Windows98Splash from '@/components/splash';
-import ZoomOnResolution from '@/components/zoom';
 
 const Index = () => {
   const router = useRouter();
@@ -40,7 +39,6 @@ const Index = () => {
 
   return (
     <>
-      <ZoomOnResolution />
       {showSplash && <Windows98Splash />}
     </>
   );

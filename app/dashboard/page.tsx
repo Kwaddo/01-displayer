@@ -8,6 +8,7 @@ import styles from '@/styles/home.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUser, faSignOut, faBarChart, faChartLine, faTrophy, faGamepad, faNoteSticky } from '@fortawesome/free-solid-svg-icons';
 import Minesweeper from '@/components/minesweeper';
+import Windows98Splash from '@/components/splash';
 
 interface Group {
   campus: string;
@@ -144,10 +145,19 @@ export default function HomePage() {
   const [notebookContent, setNotebookContent] = useState('');
   const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
   const [isDbInitialized, setIsDbInitialized] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
   const router = useRouter();
   const barChartRef = useRef(null);
   const xpChartRef = useRef(null);
   const gameRef = useRef(null);
+
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      setShowSplash(false);
+    }, 3000)
+    return () => clearTimeout(timer);
+  }, [router]);
+
   useEffect(() => {
     if (!isClient) return;
 
@@ -209,7 +219,7 @@ export default function HomePage() {
     chartContainer1: false,
     chartContainer2: false,
     chartContainer3: false,
-    chartContainer4: false,
+    container3: false,
   });
   const [visibleState, setVisibleState] = useState({
     container1: true,
@@ -217,7 +227,7 @@ export default function HomePage() {
     chartContainer1: true,
     chartContainer2: true,
     chartContainer3: true,
-    chartContainer4: true,
+    container3: true,
   });
   const toggleFullscreen = (containerName: string) => {
     setFullscreenState((prevState) => ({
@@ -233,8 +243,8 @@ export default function HomePage() {
   };
 
   useEffect(() => {
-    const userToken =  localStorage.getItem('jwtToken');
-    const userId = userData?.login; 
+    const userToken = localStorage.getItem('jwtToken');
+    const userId = userData?.login;
     if (isDbInitialized && userId && userToken) {
       const insertUserData = async () => {
         try {
@@ -252,7 +262,7 @@ export default function HomePage() {
                 const response = await fetch('/api/getNotes', {
                   method: 'GET',
                   headers: {
-                    'Authorization': userId, 
+                    'Authorization': userId,
                   },
                 });
 
@@ -288,7 +298,7 @@ export default function HomePage() {
           const barChartOptions = {
             chart: {
               type: 'bar',
-              height: 300,
+              height: '100%',
               width: 600,
               toolbar: { show: false },
             },
@@ -303,6 +313,7 @@ export default function HomePage() {
                   {
                     x: 'Received',
                     y: userData.totalDown / 1000,
+                    fillColor: '#FF3D3D',
                   },
                 ],
                 zIndex: 5,
@@ -319,22 +330,23 @@ export default function HomePage() {
               },
             },
             xaxis: {
-              categories: ['Done', 'Received'],
               labels: {
                 style: {
                   fontSize: '14px',
                   fontFamily: '"MS Sans Serif", sans-serif',
                 },
+                show: false,
               },
-              tickAmount: 0,  // This removes the numbers at the bottom
+              tickAmount: 0,
               axisTicks: {
                 show: false
               }
             },
             yaxis: {
+              categories: ['Done', 'Received'],
               labels: {
                 style: {
-                  fontSize: '16px',
+                  fontSize: '14px',
                   fontFamily: '"MS Sans Serif", sans-serif',
                   fontWeight: 'bold',
                 },
@@ -343,29 +355,24 @@ export default function HomePage() {
             colors: ['#008080'],
             responsive: [
               {
-                breakpoint: 1500,
+                breakpoint: 1024,
                 options: {
                   chart: {
-                    height: 250,
-                    width: 600,
+                    width: '77.5%',
+                  },
+                  plotOptions: {
+                    bar: {
+                      horizontal: true, 
+                      borderRadius: 4,
+                    },
                   },
                 },
               },
               {
-                breakpoint: 800,
+                breakpoint: 480, // For mobile screens
                 options: {
                   chart: {
-                    height: 250,
-                    width: 250,
-                  },
-                },
-              },
-              {
-                breakpoint: 480,
-                options: {
-                  chart: {
-                    height: 200,
-                    width: 250,
+                    width: '77.5%', // Set the width to 90% for mobile devices
                   },
                 },
               },
@@ -385,8 +392,8 @@ export default function HomePage() {
           const xpChartOptions = {
             chart: {
               type: 'bar',
-              height: 200,
-              width: 700,
+              height: '100%',
+              width: 600,
               toolbar: { show: false },
             },
             series: [{
@@ -411,53 +418,58 @@ export default function HomePage() {
             },
             xaxis: {
               title: {
-                text: 'User Level',
-                style: {
-                  fontSize: '24px',
-                  fontFamily: '"MS Sans Serif", sans-serif',
-                  fontWeight: 'bold',
-                }
-              },
-              categories: xpDistribution
-                .slice()
-                .reverse()
-                .map((item) => item.xp.toString()),
-              labels: {
-                rotate: -45,
-              },
-            },
-            yaxis: {
-              title: {
                 text: 'User',
                 style: {
                   fontSize: '24px',
                   fontFamily: '"MS Sans Serif", sans-serif',
                   fontWeight: 'bold',
-                }
+                },
+              },
+              labels: {
+                show: false,
+              }
+            },
+            yaxis: {
+              title: {
+                text: 'User Level',
+                style: {
+                  fontSize: '24px',
+                  fontFamily: '"MS Sans Serif", sans-serif',
+                  fontWeight: 'bold',
+                },
+              },
+              categories: xpDistribution
+                .slice()
+                .reverse()
+                .map((item) => item.xp.toString()), 
+              labels: {
+                show: false,
+                rotate: 0,
               },
             },
             colors: [undefined],
             responsive: [
               {
-                breakpoint: 1500,
+                breakpoint: 768,
                 options: {
                   chart: {
-                    height: 250,
-                    width: 600,
+                    width: '77.5%',
+                  },
+                  plotOptions: {
+                    bar: {
+                      horizontal: true, 
+                      borderRadius: 4,
+                    },
+                  },
+                  yaxis: {
+                    labels: {
+                      show: true, 
+                    },
                   },
                   xaxis: {
                     labels: {
-                      show: false
-                    },
-                  }
-                },
-              },
-              {
-                breakpoint: 800,
-                options: {
-                  chart: {
-                    height: 250,
-                    width: 250,
+                      show: true,
+                    }
                   },
                 },
               },
@@ -465,13 +477,22 @@ export default function HomePage() {
                 breakpoint: 480,
                 options: {
                   chart: {
-                    height: 200,
-                    width: 250,
+                    width: '77.5%',
+                  },
+                  yaxis: {
+                    labels: {
+                      show: true,
+                    },
+                  },
+                  xaxis: {
+                    labels: {
+                      show: true,
+                    }
                   },
                 },
               },
             ],
-          };
+          };          
 
           const xpChart = new ApexCharts.default(xpChartRef.current, xpChartOptions);
           xpChart.render();
@@ -501,8 +522,8 @@ export default function HomePage() {
           const gameChartOptions = {
             chart: {
               type: 'heatmap',
-              height: 400,
-              width: 225,
+              height: '100%',
+              width: '100%',
               toolbar: { show: false },
             },
             tooltip: {
@@ -558,35 +579,10 @@ export default function HomePage() {
                 style: {
                   fontSize: '12px',
                 },
+                show: false,
               },
             },
             colors: ['#66B3B3', '#008080', '#006666', '#004C4C'],
-            responsive: [
-              {
-                breakpoint: 1500,
-                options: {
-                  chart: {
-                    width: 200,
-                  },
-                },
-              },
-              {
-                breakpoint: 800,
-                options: {
-                  chart: {
-                    width: 225,
-                  },
-                },
-              },
-              {
-                breakpoint: 480,
-                options: {
-                  chart: {
-                    width: 225,
-                  },
-                },
-              },
-            ],
             plotOptions: {
               heatmap: {
                 colorScale: {
@@ -619,6 +615,37 @@ export default function HomePage() {
                 },
               },
             },
+            grid: {
+              show: true,
+              borderColor: 'transparent', // Remove the border around the entire heatmap
+              padding: {
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 0,
+              },
+            },
+            legend: {
+              show: false, 
+            },
+            responsive: [
+              {
+                breakpoint: 1024, // Tablet screens
+                options: {
+                  chart: {
+                    width: '77.5%', // Set width to 90% for tablets
+                  },
+                },
+              },
+              {
+                breakpoint: 480, // Mobile screens
+                options: {
+                  chart: {
+                    width: '77.5%', // Set width to 90% for mobile
+                  },
+                },
+              },
+            ],
           };
 
           const gameChart = new ApexCharts.default(gameRef.current, gameChartOptions);
@@ -708,202 +735,205 @@ export default function HomePage() {
   if (error) return <p className={styles.error}>{error}</p>;
 
   return (
-    <div className={styles.acontainers}>
-      <div className={styles.chartcontainers}>
-        {visibleState.container1 && (
-          <div className={`${styles.chartContainer} ${fullscreenState.container1 ? styles.fullscreen : ''} ${!visibleState.container1 ? styles.hidden : ''}`}>
-            <div className={styles.bar}>
-              <p>USER INFORMATION</p>
-              <div className={styles.barIcons}>
-                <button onClick={() => toggleFullscreen('container1')} className={styles.svgButton} aria-label="Fullscreen Button">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 24 24" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                    <path d="M3 3H9V9H3zM3 15H9V21H3zM15 3H21V9H15zM15 15H21V21H15z" />
-                  </svg>
-                </button>
-                <button onClick={() => toggleVisibility('container1')} className={styles.svgButton} aria-label="SVG Button">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                    <path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z" />
-                  </svg>
-                </button>
+    <>
+      {showSplash && <Windows98Splash />}
+      <div className={styles.acontainers}>
+        <div className={styles.chartcontainers}>
+          {visibleState.container1 && (
+            <div className={`${styles.container}`}>
+              <div className={styles.bar}>
+                <p>USER INFORMATION</p>
+                <div className={styles.barIcons}>
+                  <button onClick={() => toggleFullscreen('container1')} className={styles.svgButton} aria-label="Fullscreen Button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 24 24" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
+                      <path d="M3 3H9V9H3zM3 15H9V21H3zM15 3H21V9H15zM15 15H21V21H15z" />
+                    </svg>
+                  </button>
+                  <button onClick={() => toggleVisibility('container1')} className={styles.svgButton} aria-label="SVG Button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
+                      <path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <h1 className={styles.title}>Hi {userData?.login}!</h1>
+              <div className={styles.blackbar}></div>
+              <div className={styles.card}>
+                <div className={styles.cardBody}>
+                  <p><strong>Username:</strong> {userData?.login}</p>
+                  <p><strong>Name:</strong> {capitalizeWords(userData?.firstName || '') + ' ' + capitalizeWords(userData?.lastName || '')}</p>
+                  <p><strong>Email:</strong> {userData?.email}</p>
+                  <p><strong>Audit Ratio:</strong> {userData?.auditRatio}</p>
+                  <p><strong>Total XP:</strong> {xpAmount} Bytes</p>
+                  <p><strong>Module Level:</strong> {levelAmount} </p>
+                  <p><strong>Last Completed:</strong> {lastProject} </p>
+                  {/* Logout Button */}
+                </div>
               </div>
             </div>
-            <h1 className={styles.title}>Hi {userData?.login}!</h1>
-            <div className={styles.blackbar}></div>
-            <div className={styles.card}>
-              <div className={styles.cardBody}>
-                <p><strong>Username:</strong> {userData?.login}</p>
-                <p><strong>Name:</strong> {capitalizeWords(userData?.firstName || '') + ' ' + capitalizeWords(userData?.lastName || '')}</p>
-                <p><strong>Email:</strong> {userData?.email}</p>
-                <p><strong>Audit Ratio:</strong> {userData?.auditRatio}</p>
-                <p><strong>Total XP:</strong> {xpAmount} Bytes</p>
-                <p><strong>Module Level:</strong> {levelAmount} </p>
-                <p><strong>Last Completed:</strong> {lastProject} </p>
-                {/* Logout Button */}
+          )}
+          {visibleState.container2 && (
+            <div className={`${styles.container}`}>
+              <div className={styles.bar}>
+                <p>NOTEBOOK</p>
+                <div className={styles.barIcons}>
+                  <button onClick={() => toggleFullscreen('container2')} className={styles.svgButton} aria-label="Fullscreen Button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 24 24" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
+                      <path d="M3 3H9V9H3zM3 15H9V21H3zM15 3H21V9H15zM15 15H21V21H15z" />
+                    </svg>
+                  </button>
+                  <button onClick={() => toggleVisibility('container2')} className={styles.svgButton} aria-label="SVG Button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
+                      <path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z" />
+                    </svg>
+                  </button>
+                </div>
               </div>
+              <textarea
+                className={styles.textarea}
+                value={notebookContent}
+                onChange={handleChange}
+                placeholder="Write your notes here..."
+              />
             </div>
-          </div>
-        )}
-        {visibleState.container2 && (
-          <div className={`${styles.chartContainer} ${fullscreenState.container2 ? styles.fullscreen : ''} ${!visibleState.container2 ? styles.hidden : ''}`}>
-            <div className={styles.bar}>
-              <p>NOTEBOOK</p>
-              <div className={styles.barIcons}>
-                <button onClick={() => toggleFullscreen('container2')} className={styles.svgButton} aria-label="Fullscreen Button">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 24 24" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                    <path d="M3 3H9V9H3zM3 15H9V21H3zM15 3H21V9H15zM15 15H21V21H15z" />
-                  </svg>
-                </button>
-                <button onClick={() => toggleVisibility('container2')} className={styles.svgButton} aria-label="SVG Button">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                    <path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <textarea
-              className={styles.textarea}
-              value={notebookContent}
-              onChange={handleChange}
-              placeholder="Write your notes here..."
-            />
-          </div>
-        )}
-      </div>
-      <div className={styles.chartcontainers}>
-        {/* Audit Ratio Bar Chart */}
-        {visibleState.chartContainer1 && (
-          <div className={`${styles.chartContainer} ${fullscreenState.chartContainer1 ? styles.fullscreen : ''} ${!visibleState.chartContainer1 ? styles.hidden : ''}`}>
-            <div ref={barChartRef}></div>
-            <div className={styles.bar}>
-              <p>AUDIT RATIO</p>
-              <div className={styles.barIcons}>
-                <button onClick={() => toggleFullscreen('chartContainer1')} className={styles.svgButton} aria-label="Fullscreen Button">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 24 24" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                    <path d="M3 3H9V9H3zM3 15H9V21H3zM15 3H21V9H15zM15 15H21V21H15z" />
-                  </svg>
-                </button>
-                <button onClick={() => toggleVisibility('chartContainer1')} className={styles.svgButton} aria-label="SVG Button">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                    <path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* XP Distribution Chart */}
-        {visibleState.chartContainer2 && (
-          <div className={`${styles.chartContainer} ${fullscreenState.chartContainer2 ? styles.fullscreen : ''}`} >
-            <div ref={xpChartRef}></div>
-            <div className={styles.bar}>
-              <p>USER LEVELS ({totalUsers} USERS)</p>
-              <div className={styles.barIcons}>
-                <button onClick={() => toggleFullscreen('chartContainer2')} className={styles.svgButton} aria-label="Fullscreen Button">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 24 24" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                    <path d="M3 3H9V9H3zM3 15H9V21H3zM15 3H21V9H15zM15 15H21V21H15z" />
-                  </svg>
-                </button>
-                <button onClick={() => toggleVisibility('chartContainer2')} className={styles.svgButton} aria-label="SVG Button">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                    <path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-      <div className={styles.chartcontainers}>
-        {visibleState.chartContainer3 && (
-          <div className={`${styles.chartContainer} ${fullscreenState.chartContainer3 ? styles.fullscreen : ''}`} >
-            <div ref={gameRef}></div>
-            <div className={styles.bar}>
-              <p>GAME INFO</p>
-              <div className={styles.barIcons}>
-                <button onClick={() => toggleFullscreen('chartContainer3')} className={styles.svgButton} aria-label="Fullscreen Button">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 24 24" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                    <path d="M3 3H9V9H3zM3 15H9V21H3zM15 3H21V9H15zM15 15H21V21H15z" />
-                  </svg>
-                </button>
-                <button onClick={() => toggleVisibility('chartContainer3')} className={styles.svgButton} aria-label="SVG Button">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                    <path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        {visibleState.chartContainer4 && (
-          <div className={`${styles.chartContainer} ${fullscreenState.chartContainer4 ? styles.fullscreen : ''}`}>
-            <div className={styles.bar}>
-              <p>MINESWEEPER</p>
-              <div className={styles.barIcons}>
-                <button onClick={() => toggleFullscreen('chartContainer4')} className={styles.svgButton} aria-label="Fullscreen Button">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 24 24" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                    <path d="M3 3H9V9H3zM3 15H9V21H3zM15 3H21V9H15zM15 15H21V21H15z" />
-                  </svg>
-                </button>
-                <button onClick={() => toggleVisibility('chartContainer4')} className={styles.svgButton} aria-label="SVG Button">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                    <path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <Minesweeper />
-          </div>
-        )}
-      </div>
-      <div className={styles.windowbar}>
-        <div className={styles.buttonContainer}>
-          <button
-            style={{ backgroundColor: visibleState.container1 ? '#888b8d' : '' }}
-            className={styles.iconButton}
-            onClick={() => toggleVisibility('container1')}>
-            <FontAwesomeIcon icon={faUser} />
-          </button>
-          <button
-            style={{ backgroundColor: visibleState.container2 ? '#888b8d' : '' }}
-            className={styles.iconButton}
-            onClick={() => toggleVisibility('container2')}>
-            <FontAwesomeIcon icon={faNoteSticky} />
-          </button>
-          <button
-            style={{ backgroundColor: visibleState.chartContainer1 ? '#888b8d' : '' }}
-            className={styles.iconButton}
-            onClick={() => toggleVisibility('chartContainer1')}>
-            <FontAwesomeIcon icon={faBarChart} />
-          </button>
-          <button
-            style={{ backgroundColor: visibleState.chartContainer2 ? '#888b8d' : '' }}
-            className={styles.iconButton}
-            onClick={() => toggleVisibility('chartContainer2')}>
-            <FontAwesomeIcon icon={faChartLine} />
-          </button>
-          <button
-            style={{ backgroundColor: visibleState.chartContainer3 ? '#888b8d' : '' }}
-            className={styles.iconButton}
-            onClick={() => toggleVisibility('chartContainer3')}>
-            <FontAwesomeIcon icon={faTrophy} />
-          </button>
-          <button
-            style={{ backgroundColor: visibleState.chartContainer4 ? '#888b8d' : '' }}
-            className={styles.iconButton}
-            onClick={() => toggleVisibility('chartContainer4')}>
-            <FontAwesomeIcon icon={faGamepad} />
-          </button>
-          <button className={styles.iconButton} onClick={handleLogout}>
-            <FontAwesomeIcon icon={faSignOut} />
-          </button>
+          )}
         </div>
-      </div>
-      <style jsx>{`
+        <div className={styles.chartcontainers}>
+          {/* Audit Ratio Bar Chart */}
+          {visibleState.chartContainer1 && (
+            <div className={`${styles.chartContainer}`}>
+              <div ref={barChartRef}></div>
+              <div className={styles.bar}>
+                <p>AUDIT RATIO</p>
+                <div className={styles.barIcons}>
+                  <button onClick={() => toggleFullscreen('chartContainer1')} className={styles.svgButton} aria-label="Fullscreen Button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 24 24" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
+                      <path d="M3 3H9V9H3zM3 15H9V21H3zM15 3H21V9H15zM15 15H21V21H15z" />
+                    </svg>
+                  </button>
+                  <button onClick={() => toggleVisibility('chartContainer1')} className={styles.svgButton} aria-label="SVG Button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
+                      <path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* XP Distribution Chart */}
+          {visibleState.chartContainer2 && (
+            <div className={`${styles.chartContainer}`} >
+              <div ref={xpChartRef}></div>
+              <div className={styles.bar}>
+                <p>USER LEVELS ({totalUsers} USERS)</p>
+                <div className={styles.barIcons}>
+                  <button onClick={() => toggleFullscreen('chartContainer2')} className={styles.svgButton} aria-label="Fullscreen Button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 24 24" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
+                      <path d="M3 3H9V9H3zM3 15H9V21H3zM15 3H21V9H15zM15 15H21V21H15z" />
+                    </svg>
+                  </button>
+                  <button onClick={() => toggleVisibility('chartContainer2')} className={styles.svgButton} aria-label="SVG Button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
+                      <path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className={styles.chartcontainers}>
+          {visibleState.chartContainer3 && (
+            <div className={`${styles.chartContainer}`} >
+              <div ref={gameRef}></div>
+              <div className={styles.bar}>
+                <p>GAME INFO</p>
+                <div className={styles.barIcons}>
+                  <button onClick={() => toggleFullscreen('chartContainer3')} className={styles.svgButton} aria-label="Fullscreen Button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 24 24" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
+                      <path d="M3 3H9V9H3zM3 15H9V21H3zM15 3H21V9H15zM15 15H21V21H15z" />
+                    </svg>
+                  </button>
+                  <button onClick={() => toggleVisibility('chartContainer3')} className={styles.svgButton} aria-label="SVG Button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
+                      <path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {visibleState.container3 && (
+            <div className={`${styles.container}`}>
+              <div className={styles.bar}>
+                <p>MINESWEEPER</p>
+                <div className={styles.barIcons}>
+                  <button onClick={() => toggleFullscreen('container3')} className={styles.svgButton} aria-label="Fullscreen Button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 24 24" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
+                      <path d="M3 3H9V9H3zM3 15H9V21H3zM15 3H21V9H15zM15 15H21V21H15z" />
+                    </svg>
+                  </button>
+                  <button onClick={() => toggleVisibility('container3')} className={styles.svgButton} aria-label="SVG Button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
+                      <path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <Minesweeper />
+            </div>
+          )}
+        </div>
+        <div className={styles.windowbar}>
+          <div className={styles.buttonContainer}>
+            <button
+              style={{ backgroundColor: visibleState.container1 ? '#888b8d' : '' }}
+              className={styles.iconButton}
+              onClick={() => toggleVisibility('container1')}>
+              <FontAwesomeIcon icon={faUser} />
+            </button>
+            <button
+              style={{ backgroundColor: visibleState.container2 ? '#888b8d' : '' }}
+              className={styles.iconButton}
+              onClick={() => toggleVisibility('container2')}>
+              <FontAwesomeIcon icon={faNoteSticky} />
+            </button>
+            <button
+              style={{ backgroundColor: visibleState.chartContainer1 ? '#888b8d' : '' }}
+              className={styles.iconButton}
+              onClick={() => toggleVisibility('chartContainer1')}>
+              <FontAwesomeIcon icon={faBarChart} />
+            </button>
+            <button
+              style={{ backgroundColor: visibleState.chartContainer2 ? '#888b8d' : '' }}
+              className={styles.iconButton}
+              onClick={() => toggleVisibility('chartContainer2')}>
+              <FontAwesomeIcon icon={faChartLine} />
+            </button>
+            <button
+              style={{ backgroundColor: visibleState.chartContainer3 ? '#888b8d' : '' }}
+              className={styles.iconButton}
+              onClick={() => toggleVisibility('chartContainer3')}>
+              <FontAwesomeIcon icon={faTrophy} />
+            </button>
+            <button
+              style={{ backgroundColor: visibleState.container3 ? '#888b8d' : '' }}
+              className={styles.iconButton}
+              onClick={() => toggleVisibility('container3')}>
+              <FontAwesomeIcon icon={faGamepad} />
+            </button>
+            <button className={styles.iconButton} onClick={handleLogout}>
+              <FontAwesomeIcon icon={faSignOut} />
+            </button>
+          </div>
+        </div>
+        <style jsx>{`
         .apexcharts-legend-text {
           opacity: 0; 
         }
       `}</style>
-    </div >
+      </div>
+    </>
   );
 }
