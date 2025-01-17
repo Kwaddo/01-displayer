@@ -168,26 +168,31 @@
 }
 
 .fullscreen {
-    width: 100vw;
-    height: 100vh;
     position: fixed;
     top: 0;
     left: 0;
-    z-index: 500;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: center;
-    animation: fullscreenAnimation 0.2s ease-out forwards;
-}
-
-.fullscreenExit {
-    animation: fullscreenAnimation 0.2s ease-in reverse;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1000;
+    box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.5);
+    overflow: auto;
+    display: flex; /* Optional: if you want to center content */
+    justify-content: center; /* Optional: center horizontally */
+    align-items: center; 
 }
 
 .fullscreen,
 .fullscreenExit {
     transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+}
+
+.hidden {
+    display: none; /* Ensure hidden elements don't take up space */
+  }
+
+.acontainers,
+.chartcontainers {
+  position: relative;
 }
 
 .bar p {
@@ -287,7 +292,7 @@
 }
 
 .cardBody p {
-    font-size: 18px;
+    font-size: 14px;
 }
 
 .label {
