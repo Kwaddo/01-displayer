@@ -10,7 +10,7 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    background: #008080;
+    background: #29353C;
     padding: 10px;
     border-radius: 4px;
 }
@@ -24,7 +24,7 @@
     width: 28px;
     height: 28px;
     border: none;
-    background: #66B3B3;
+    background: #4D6269;
     cursor: pointer;
     font-size: 16px;
     display: flex;
@@ -34,11 +34,11 @@
 }
 
 .cell:hover {
-    background: #004C4C;
+    background: #1F2B30;
 }
 
 .cell.revealed {
-    background: #004d4d;
+    background: #141B1F;
     color: white;
 }
 
@@ -60,7 +60,7 @@
 }
 
 .popupContent {
-    background: #008080;
+    background: #29353C;
     padding: 20px;
     border-radius: 8px;
     text-align: center;
@@ -68,7 +68,7 @@
 }
 
 .popupContent button {
-    background: #66B3B3;
+    background: #1F2B30;
     border: none;
     padding: 10px 20px;
     border-radius: 4px;
@@ -78,7 +78,7 @@
 }
 
 .popupContent button:hover {
-    background: #004C4C;
+    background: #141B1F;
 }
 
 @media screen and (max-width: 768px) {

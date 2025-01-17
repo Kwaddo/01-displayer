@@ -6,7 +6,7 @@ import { fetchGraphQL } from '@/utils/info';
 import { logout } from '@/utils/user';
 import styles from '@/styles/home.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUser, faSignOut, faBarChart, faChartLine, faTrophy, faGamepad, faNoteSticky } from '@fortawesome/free-solid-svg-icons';
+import { faUser, faSignOut, faBarChart, faChartLine, faTrophy, faGamepad, faNoteSticky, faPalette } from '@fortawesome/free-solid-svg-icons';
 import Minesweeper from '@/components/minesweeper';
 import Windows98Splash from '@/components/splash';
 
@@ -143,6 +143,8 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [notebookContent, setNotebookContent] = useState('');
+  const [colorId, getColor] = useState<number>(0);
+  const [color, setColor] = useState<number>(0);
   const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
   const [isDbInitialized, setIsDbInitialized] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
@@ -213,6 +215,7 @@ export default function HomePage() {
       }
     }; fetchData();
   }, [router, isClient]);
+
   const [fullscreenState, setFullscreenState] = useState({
     container1: false,
     container2: false,
@@ -220,7 +223,9 @@ export default function HomePage() {
     chartContainer2: false,
     chartContainer3: false,
     container3: false,
+    container4: false,
   });
+
   const [visibleState, setVisibleState] = useState({
     container1: true,
     container2: true,
@@ -228,13 +233,50 @@ export default function HomePage() {
     chartContainer2: true,
     chartContainer3: true,
     container3: true,
+    container4: false,
   });
-  const toggleFullscreen = (containerName: string) => {
-    setFullscreenState((prevState) => ({
-      ...prevState,
-      [containerName as keyof typeof fullscreenState]: !prevState[containerName as keyof typeof fullscreenState],
-    }));
+  const colorMap: { [key: number]: number } = {
+    1: 1,
+    2: 2,
+    3: 3,
+    4: 4,
+    5: 5,
   };
+  const [prevVisibilityState, setPrevVisibilityState] = useState<Record<string, boolean>>({});
+
+  const toggleFullscreen = (container: string) => {
+    setFullscreenState(prevState => {
+      const newState = { ...prevState };
+      if (!prevState[container as keyof typeof prevState]) {
+        Object.keys(prevState).forEach(key => {
+          if (key !== container) {
+            newState[key as keyof typeof prevState] = false;
+          }
+        });
+      }
+      newState[container as keyof typeof prevState] = !prevState[container as keyof typeof prevState];
+      return newState;
+    });
+    setVisibleState(prevState => {
+      const newVisibleState = { ...prevState };
+      if (!fullscreenState[container as keyof typeof prevState]) {
+        setPrevVisibilityState(prevState);
+        Object.keys(prevState).forEach(key => {
+          if (key !== container) {
+            newVisibleState[key as keyof typeof prevState] = false;
+          }
+        });
+      } else {
+        Object.keys(prevState).forEach(key => {
+          if (key !== container) {
+            newVisibleState[key as keyof typeof prevState] = prevVisibilityState[key] ?? true;
+          }
+        });
+      }
+      return newVisibleState;
+    });
+  };
+
   const toggleVisibility = (containerName: string) => {
     setVisibleState((prevState) => ({
       ...prevState,
@@ -276,8 +318,28 @@ export default function HomePage() {
                 setError('An error occurred while fetching notes: ' + error);
               }
             };
+            const fetchColor = async () => {
+              try {
+                const response = await fetch('/api/getColor', {
+                  method: 'GET',
+                  headers: {
+                    'Authorization': userId,
+                  },
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                  getColor(data.colorId || '');
+                } else {
+                  setError(data.error || 'Failed to fetch color');
+                }
+              } catch (error) {
+                setError('An error occurred while fetching color: ' + error);
+              }
+            };
 
             fetchNotes();
+            fetchColor();
           } else {
             setError(data.error || 'Failed to insert user data');
           }
@@ -362,17 +424,17 @@ export default function HomePage() {
                   },
                   plotOptions: {
                     bar: {
-                      horizontal: true, 
+                      horizontal: true,
                       borderRadius: 4,
                     },
                   },
                 },
               },
               {
-                breakpoint: 480, // For mobile screens
+                breakpoint: 480,
                 options: {
                   chart: {
-                    width: '77.5%', // Set the width to 90% for mobile devices
+                    width: '77.5%',
                   },
                 },
               },
@@ -404,7 +466,7 @@ export default function HomePage() {
                 .map((item) => ({
                   x: item.xp.toString(),
                   y: item.count,
-                  fillColor: item.xp.toString() === levelAmount.toString() ? '#004d4f' : '#008080',
+                  fillColor: item.xp.toString() === levelAmount.toString() ? '#4D6269' : '#29353C',
                 })),
             }],
             dataLabels: {
@@ -441,7 +503,7 @@ export default function HomePage() {
               categories: xpDistribution
                 .slice()
                 .reverse()
-                .map((item) => item.xp.toString()), 
+                .map((item) => item.xp.toString()),
               labels: {
                 show: false,
                 rotate: 0,
@@ -457,13 +519,13 @@ export default function HomePage() {
                   },
                   plotOptions: {
                     bar: {
-                      horizontal: true, 
+                      horizontal: true,
                       borderRadius: 4,
                     },
                   },
                   yaxis: {
                     labels: {
-                      show: true, 
+                      show: true,
                     },
                   },
                   xaxis: {
@@ -492,7 +554,7 @@ export default function HomePage() {
                 },
               },
             ],
-          };          
+          };
 
           const xpChart = new ApexCharts.default(xpChartRef.current, xpChartOptions);
           xpChart.render();
@@ -582,7 +644,7 @@ export default function HomePage() {
                 show: false,
               },
             },
-            colors: ['#66B3B3', '#008080', '#006666', '#004C4C'],
+            colors: ['#4D6269', '#29353C', '#1F2B30', '#141B1F'],
             plotOptions: {
               heatmap: {
                 colorScale: {
@@ -591,57 +653,47 @@ export default function HomePage() {
                       from: 0,
                       to: 1,
                       name: 'Low',
-                      color: '#66B3B3',
+                      color: '#4D6269',
                     },
                     {
                       from: 1,
                       to: 5,
                       name: 'Medium',
-                      color: '#008080',
+                      color: '#29353C',
                     },
                     {
                       from: 5,
                       to: 10,
                       name: 'High',
-                      color: '#006666',
+                      color: '#1F2B30',
                     },
                     {
                       from: 10,
                       to: 20,
                       name: 'Very High',
-                      color: '#004C4C',
+                      color: '#141B1F',
                     },
                   ],
                 },
               },
             },
-            grid: {
-              show: true,
-              borderColor: 'transparent', // Remove the border around the entire heatmap
-              padding: {
-                left: 0,
-                right: 0,
-                top: 0,
-                bottom: 0,
-              },
-            },
             legend: {
-              show: false, 
+              show: false,
             },
             responsive: [
               {
-                breakpoint: 1024, // Tablet screens
+                breakpoint: 1024,
                 options: {
                   chart: {
-                    width: '77.5%', // Set width to 90% for tablets
+                    width: '77.5%',
                   },
                 },
               },
               {
-                breakpoint: 480, // Mobile screens
+                breakpoint: 480,
                 options: {
                   chart: {
-                    width: '77.5%', // Set width to 90% for mobile
+                    width: '77.5%',
                   },
                 },
               },
@@ -721,6 +773,33 @@ export default function HomePage() {
     }
   }, [isDbInitialized]);
 
+  const saveColor = useCallback(async (newColor: any) => {
+    if (!isDbInitialized) {
+      setError('Database not initialized');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/setColor', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: userData?.login,
+          color_id: newColor,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error || 'Failed to save color');
+      }
+    } catch (error) {
+      setError('An error occurred while saving color: ' + error);
+    }
+  }, [isDbInitialized]);
+
   const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = event.target.value;
     setNotebookContent(newContent);
@@ -731,6 +810,47 @@ export default function HomePage() {
     setTimeoutId(newTimeoutId);
   };
 
+  useEffect(() => {
+    setColor(colorMap[colorId] || 1);
+  }, [colorId]);
+
+  const getColorByValue = (value: number) => {
+    switch (value) {
+      case 2:
+        return '#ff6347';
+      case 3:
+        return '#8a2be2'; 
+      case 4:
+        return '#32cd32'; 
+      case 5:
+        return '#ff4500'; 
+      default:
+        return '#008080'; 
+    }
+  };
+
+  useEffect(() => {
+    if (isClient) {
+      switch (color) {
+        case 2:
+          document.body.style.background = 'linear-gradient(45deg, #ff6347 25%, #ff0000 50%, #7f0000 100%)';
+          break;
+        case 3:
+          document.body.style.background = 'linear-gradient(45deg, #8a2be2 25%, #6a0dad 50%, #4b0082 100%)';
+          break;
+        case 4:
+          document.body.style.background = 'linear-gradient(45deg, #32cd32 25%, #228b22 50%, #006400 100%)';
+          break;
+        case 5:
+          document.body.style.background = 'linear-gradient(45deg, #ff4500 25%, #ff6347 50%, #b22222 100%)';
+          break;
+        default:
+          document.body.style.background = 'linear-gradient(45deg, #00bdbd 25%, #008080 50%,rgb(0, 97, 97) 100%)';
+          break;
+      }
+    }
+  }, [color, isClient]);
+
   if (loading) return <p className={styles.loading}>Loading...</p>;
   if (error) return <p className={styles.error}>{error}</p>;
 
@@ -740,8 +860,8 @@ export default function HomePage() {
       <div className={styles.acontainers}>
         <div className={styles.chartcontainers}>
           {visibleState.container1 && (
-            <div className={`${styles.container}`}>
-              <div className={styles.bar}>
+            <div className={`${styles.container} ${fullscreenState.container1 ? styles.fullscreen : ''}`}>
+              <div className={`${styles.bar}`}>
                 <p>USER INFORMATION</p>
                 <div className={styles.barIcons}>
                   <button onClick={() => toggleFullscreen('container1')} className={styles.svgButton} aria-label="Fullscreen Button">
@@ -773,7 +893,7 @@ export default function HomePage() {
             </div>
           )}
           {visibleState.container2 && (
-            <div className={`${styles.container}`}>
+            <div className={`${styles.container} ${fullscreenState.container2 ? styles.fullscreen : ''}`}>
               <div className={styles.bar}>
                 <p>NOTEBOOK</p>
                 <div className={styles.barIcons}>
@@ -801,7 +921,7 @@ export default function HomePage() {
         <div className={styles.chartcontainers}>
           {/* Audit Ratio Bar Chart */}
           {visibleState.chartContainer1 && (
-            <div className={`${styles.chartContainer}`}>
+            <div className={`${styles.chartContainer} ${fullscreenState.chartContainer1 ? styles.fullscreen : ''}`}>
               <div ref={barChartRef}></div>
               <div className={styles.bar}>
                 <p>AUDIT RATIO</p>
@@ -823,7 +943,7 @@ export default function HomePage() {
 
           {/* XP Distribution Chart */}
           {visibleState.chartContainer2 && (
-            <div className={`${styles.chartContainer}`} >
+            <div className={`${styles.chartContainer} ${fullscreenState.chartContainer2 ? styles.fullscreen : ''}`} >
               <div ref={xpChartRef}></div>
               <div className={styles.bar}>
                 <p>USER LEVELS ({totalUsers} USERS)</p>
@@ -845,7 +965,7 @@ export default function HomePage() {
         </div>
         <div className={styles.chartcontainers}>
           {visibleState.chartContainer3 && (
-            <div className={`${styles.chartContainer}`} >
+            <div className={`${styles.chartContainer} ${fullscreenState.chartContainer3 ? styles.fullscreen : ''}`} >
               <div ref={gameRef}></div>
               <div className={styles.bar}>
                 <p>GAME INFO</p>
@@ -865,7 +985,7 @@ export default function HomePage() {
             </div>
           )}
           {visibleState.container3 && (
-            <div className={`${styles.container}`}>
+            <div className={`${styles.container} ${fullscreenState.container3 ? styles.fullscreen : ''}`}>
               <div className={styles.bar}>
                 <p>MINESWEEPER</p>
                 <div className={styles.barIcons}>
@@ -923,17 +1043,44 @@ export default function HomePage() {
               onClick={() => toggleVisibility('container3')}>
               <FontAwesomeIcon icon={faGamepad} />
             </button>
+            <button
+              style={{ backgroundColor: visibleState.container4 ? '#888b8d' : '' }}
+              className={styles.iconButton}
+              onClick={() => toggleVisibility('container4')}>
+              <FontAwesomeIcon icon={faPalette} />
+            </button>
             <button className={styles.iconButton} onClick={handleLogout}>
               <FontAwesomeIcon icon={faSignOut} />
             </button>
           </div>
         </div>
-        <style jsx>{`
-        .apexcharts-legend-text {
-          opacity: 0; 
-        }
-      `}</style>
       </div>
+      {visibleState.container4 && (
+        <div className={`${styles.colorcontainer} ${fullscreenState.container3 ? styles.fullscreen : ''}`}>
+          <div className={styles.bar}>
+            <p>COLOR</p>
+            <div className={styles.barIcons}>
+              <button onClick={() => toggleVisibility('container4')} className={styles.svgButton} aria-label="SVG Button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
+                  <path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div className={styles.colorPicker}>
+            {Object.entries(colorMap).map(([id, colorValue]) => (
+              <button
+                key={id}
+                className={styles.colorSquare}
+                onClick={() => setColor(colorValue)}
+                onClickCapture={() => saveColor(colorValue)}
+                aria-label={`Change color to ${colorValue}`}
+                style={{ backgroundColor: getColorByValue(colorValue) }} 
+              ></button>
+            ))}
+          </div>
+        </div>
+      )}
     </>
   );
 }

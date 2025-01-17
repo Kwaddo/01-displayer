@@ -13,7 +13,7 @@
 }
 
 .blackbar {
-    background-color: #008080;
+    background-color: #29353C;
     height: 10px;
     width: 100%;
 }
@@ -128,6 +128,67 @@
     box-sizing: border-box;
     margin-bottom: 20px;
 }
+
+.colorcontainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 200px;
+    height: 100px;
+    padding: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    background: #c2c6ca;
+    font-size: 12px;
+    -webkit-font-smoothing: none;
+    box-shadow: 0.5px 0.5px 0 0.5px black, inset 1px 1px #C2C6CA, inset -1px -1px #85898d, inset 2px 2px white;
+    position: fixed;
+    box-sizing: border-box;
+    margin-bottom: 20px;
+    left: 20px;
+}
+
+.colorcontainer {
+    padding: 10px;
+}
+
+.bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    color: white;
+    background: #00a;
+    padding: 5px;
+    margin: 0;
+}
+
+.barIcons {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.colorPicker {
+    display: flex;
+    gap: 10px;
+    /* Space between color squares */
+    margin-top: 20px;
+}
+
+.colorSquare {
+    width: 30px;
+    height: 30px;
+    border: 3px solid #000000;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.colorSquare:hover {
+    transform: scale(1.1);
+}
+
 
 .bar {
     display: flex;
@@ -319,31 +380,82 @@
     cursor: not-allowed;
 }
 
+.textarea {
+    width: 100%;
+    height: 200px;
+    margin-top: 20px;
+    padding: 10px -20px;
+    font-size: 16px;
+    background-color: #f1f1f1;
+    border: 2px solid theme('colors.t-black');
+}
+
+/* This class will make the container fill the entire screen */
+.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    /* Make sure it's on top of other elements */
+    width: 90vw;
+    height: 80vh;
+    overflow: auto;
+    translate: -49% -49.25%;
+}
+
+/* Optional: you may want to adjust the header bar and icons for fullscreen */
+.fullscreen .bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10000;
+}
+
+.fullscreen .textarea {
+    height: 100%;
+}
+
+.chartContainer.fullscreen [ref="chartRef"],
+.chartContainer.fullscreen [ref="barChartRef"],
+.chartContainer.fullscreen [ref="xpChartRef"],
+.chartContainer.fullscreen [ref="gameRef"] {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+
 @media screen and (max-width: 1024px) {
+    .colorcontainer {
+        top: 20px;
+        left: 25%;
+        justify-content: center;
+        align-self: center;
+    }
 
     .chartContainer,
     .chartcontainers,
     .container,
     .acontainers {
         width: 100%;
-        /* Make sure containers use full width */
         margin: 0 auto;
-        /* Center them */
         padding: 0;
-        /* Remove any padding that could cause overflow */
         box-sizing: border-box;
-        /* Include padding/border in the element's total width/height */
     }
 
-    /* Ensure chart container content does not overflow */
     .chartContainer {
         height: auto;
-        /* Make height flexible if needed */
         padding-top: 25px;
+    }
+
+    .fullscreen {
+        translate: 0 -49.25%;
     }
 }
 
-/* For very small devices (max-width 350px) */
 @media screen and (max-width: 350px) {
 
     .chartcontainers,
@@ -356,31 +468,30 @@
 
 }
 
-/* For tablet/mobile views (max-width 1024px) */
 @media screen and (max-width: 1024px) {
     .chartContainer {
         width: 100%;
-        padding: 0;  /* Remove any extra padding */
-        box-sizing: border-box;  /* Ensure padding is considered in the width */
+        padding: 0;
+        box-sizing: border-box;
     }
 
     .acontainers {
-        padding: 0 10px;  /* Add slight padding for small screens */
-        width: 100%; /* Make sure it fits within the viewport */
+        padding: 0 10px;
+        width: 100%;
         margin-bottom: 20px;
     }
 
     .chartcontainers {
-        width: 100%; /* Ensure chart containers fit within viewport */
+        width: 100%;
     }
 
     .container {
-        width: 100%;  /* Ensure the container takes up the full width */
+        width: 100%;
         margin: 0 auto;
     }
+
 }
 
-/* Adjust for smaller mobile/tablet screens if needed */
 @media screen and (max-width: 900px) {
     .acontainers {
         flex-direction: column;
@@ -399,24 +510,22 @@
         justify-content: center;
         align-items: center;
     }
+
     .iconButton {
         width: 26px;
         height: 26px;
     }
+
     .iconButton i {
         font-size: 18px;
     }
-    
+
 }
 
-/* Remove unnecessary horizontal scrolling on larger screens */
 @media screen and (max-width: 1366px) {
     .acontainers {
-
         gap: 20px;
-        /* Reduce gap for smaller screens */
         padding: 0 15px;
-        /* Add padding on the sides */
     }
 
     .chartContainer {
@@ -425,11 +534,11 @@
     }
 }
 
-/* Add overflow hidden to prevent any horizontal scrolling */
 @media screen and (max-width: 1000px) {
     .localBody :global(body) {
         overflow: auto;
     }
+
     .chartContainer {
         width: 90%;
         height: 700px;
@@ -468,14 +577,5 @@
         justify-content: center;
         align-items: center;
     }
-}
 
-.textarea {
-    width: 100%;
-    height: 200px;
-    margin-top: 20px;
-    padding: 10px -20px;
-    font-size: 16px;
-    background-color: #f1f1f1;
-    border: 2px solid #008080;
 }
