@@ -9,11 +9,11 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 99990; /* Make sure it overlays all other content */
+  z-index: 99990;
 }
 
 .window {
-  width: 400px; /* Default width */
+  width: 400px; 
   background-color: #C0C0C0;
   border: 2px solid #000;
   border-radius: 10px;
@@ -21,7 +21,6 @@
   overflow: hidden;
 }
 
-/* Header styles */
 .header {
   background-color: #000080;
   color: white;
