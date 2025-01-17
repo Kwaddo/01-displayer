@@ -385,8 +385,8 @@ export default function HomePage() {
           const xpChartOptions = {
             chart: {
               type: 'bar',
-              height: 300,
-              width: 1000,
+              height: 200,
+              width: 700,
               toolbar: { show: false },
             },
             series: [{
@@ -501,7 +501,7 @@ export default function HomePage() {
           const gameChartOptions = {
             chart: {
               type: 'heatmap',
-              height: 450,
+              height: 400,
               width: 225,
               toolbar: { show: false },
             },
@@ -556,7 +556,7 @@ export default function HomePage() {
               },
               labels: {
                 style: {
-                  fontSize: '14px',
+                  fontSize: '12px',
                 },
               },
             },
@@ -648,7 +648,7 @@ export default function HomePage() {
   useEffect(() => {
     const initializeDatabase = async () => {
       try {
-        const response = await fetch('/api/initDb');  // Call to check DB initialization
+        const response = await fetch('/api/initDb');
         const data = await response.json();
 
         if (response.ok) {
@@ -667,7 +667,7 @@ export default function HomePage() {
     initializeDatabase();
   }, []);
 
-  const saveNotes = useCallback(async (newContent: string) => {
+  const saveNotes = useCallback(async (newContent: any) => {
     if (!isDbInitialized) {
       setError('Database not initialized');
       return;
@@ -680,7 +680,7 @@ export default function HomePage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          token: localStorage.getItem('jwtToken'),
+          user_id: userData?.login,
           notebookcontent: newContent,
         }),
       });
@@ -711,7 +711,7 @@ export default function HomePage() {
     <div className={styles.acontainers}>
       <div className={styles.chartcontainers}>
         {visibleState.container1 && (
-          <div className={`${styles.container} ${fullscreenState.container1 ? styles.fullscreen : ''}`}>
+          <div className={`${styles.chartContainer} ${fullscreenState.container1 ? styles.fullscreen : ''} ${!visibleState.container1 ? styles.hidden : ''}`}>
             <div className={styles.bar}>
               <p>USER INFORMATION</p>
               <div className={styles.barIcons}>
@@ -727,7 +727,7 @@ export default function HomePage() {
                 </button>
               </div>
             </div>
-            <h1 className={styles.title}>Welcome, {userData?.login}!</h1>
+            <h1 className={styles.title}>Hi {userData?.login}!</h1>
             <div className={styles.blackbar}></div>
             <div className={styles.card}>
               <div className={styles.cardBody}>
@@ -744,7 +744,7 @@ export default function HomePage() {
           </div>
         )}
         {visibleState.container2 && (
-          <div className={`${styles.container} ${fullscreenState.container2 ? styles.fullscreen : ''}`}>
+          <div className={`${styles.chartContainer} ${fullscreenState.container2 ? styles.fullscreen : ''} ${!visibleState.container2 ? styles.hidden : ''}`}>
             <div className={styles.bar}>
               <p>NOTEBOOK</p>
               <div className={styles.barIcons}>
@@ -769,7 +769,6 @@ export default function HomePage() {
           </div>
         )}
       </div>
-
       <div className={styles.chartcontainers}>
         {/* Audit Ratio Bar Chart */}
         {visibleState.chartContainer1 && (

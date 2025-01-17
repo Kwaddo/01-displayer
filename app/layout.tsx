@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "@/styles/global.css";
 
 export const metadata: Metadata = {
-  title: "graphql",
+  title: "01-Displayer",
 };
 
 export default function RootLayout({
