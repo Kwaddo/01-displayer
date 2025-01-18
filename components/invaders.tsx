@@ -27,6 +27,9 @@ const CANVAS_HEIGHT = 500
 
 export default function SpaceInvaders() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [playerImage, setPlayerImage] = useState<HTMLImageElement | null>(null)
+  const [enemyImage, setEnemyImage] = useState<HTMLImageElement | null>(null)
+  const [imageLoaded, setImageLoaded] = useState(false)
   const [gameStarted, setGameStarted] = useState(false)
   const [player, setPlayer] = useState<Player>({
     x: CANVAS_WIDTH / 2 - 25,
@@ -41,6 +44,23 @@ export default function SpaceInvaders() {
   const [win, setWin] = useState(false)
   const [keysPressed, setKeysPressed] = useState<Set<string>>(new Set())
   const [lastShotTime, setLastShotTime] = useState<number>(0)
+
+  // Load player image
+  useEffect(() => {
+    const img = new Image()
+    const img2 = new Image()
+    img.onload = () => {
+      setPlayerImage(img2)
+      setEnemyImage(img)
+      setImageLoaded(true)
+    }
+    img.onerror = (e) => {
+      console.error('Error loading player image:', e)
+      setImageLoaded(false)
+    }
+    img.src = 'face.png'
+    img2.src = 'face2.png'
+  }, [])
 
   const initializeInvaders = useCallback(() => {
     const newInvaders: Invader[] = []
@@ -76,7 +96,7 @@ export default function SpaceInvaders() {
   }, [initializeInvaders])
 
   useEffect(() => {
-    if (!gameStarted || gameOver || win) return
+    if (!gameStarted || gameOver || win || !imageLoaded || !playerImage) return
 
     const canvas = canvasRef.current
     const ctx = canvas?.getContext('2d')
@@ -97,13 +117,32 @@ export default function SpaceInvaders() {
 
       ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
 
-      ctx.fillStyle = 'green'
-      ctx.fillRect(player.x, player.y, player.width, player.height)
+      // Draw player image
+      try {
+        ctx.drawImage(playerImage, player.x, player.y, player.width, player.height)
+      } catch (error) {
+        console.error('Error drawing player image:', error)
+        // Fallback to rectangle if image drawing fails
+        ctx.fillStyle = 'green'
+        ctx.fillRect(player.x, player.y, player.width, player.height)
+      }
 
-      ctx.fillStyle = 'red'
       invaders.forEach(invader => {
-        ctx.fillRect(invader.x, invader.y, invader.width, invader.height)
-      })
+        try {
+          if (enemyImage) {
+            ctx.drawImage(enemyImage, invader.x, invader.y, invader.width, invader.height);
+          } else {
+            // Fallback to red rectangle if enemy image is not loaded
+            ctx.fillStyle = 'red';
+            ctx.fillRect(invader.x, invader.y, invader.width, invader.height);
+          }
+        } catch (error) {
+          console.error('Error drawing invader image:', error);
+          // Fallback to red rectangle if enemy image drawing fails
+          ctx.fillStyle = 'red';
+          ctx.fillRect(invader.x, invader.y, invader.width, invader.height);
+        }
+      });
 
       ctx.fillStyle = 'yellow'
       bullets.forEach(bullet => {
@@ -123,7 +162,7 @@ export default function SpaceInvaders() {
       if (keysPressed.has('ArrowRight')) {
         setPlayer(prev => ({
           ...prev,
-          x: Math.min(CANVAS_WIDTH - player.width, player.x + player.speed),
+          x: Math.min(CANVAS_WIDTH - player.width, prev.x + prev.speed),
         }))
       }
 
@@ -170,7 +209,7 @@ export default function SpaceInvaders() {
 
       setInvaders(prevInvaders => {
         const remainingInvaders = prevInvaders.filter(invader => {
-          const isHit = bullets.some(bullet => 
+          const isHit = bullets.some(bullet =>
             bullet.x < invader.x + invader.width &&
             bullet.x + bullet.width > invader.x &&
             bullet.y < invader.y + invader.height &&
@@ -210,7 +249,7 @@ export default function SpaceInvaders() {
     return () => {
       cancelAnimationFrame(animationFrameId)
     }
-  }, [gameStarted, gameOver, win, player, invaders, bullets, keysPressed, lastShotTime])
+  }, [gameStarted, gameOver, win, player, invaders, bullets, keysPressed, lastShotTime, playerImage, imageLoaded])
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!gameStarted || gameOver || win) return
@@ -244,6 +283,9 @@ export default function SpaceInvaders() {
 
   return (
     <div className={styles.container}>
+      <div className={styles.gameOverText}>
+        Space Invaders! Use Right/Left Arrow Keys to move. Press Space to shoot.
+      </div>
       <canvas
         ref={canvasRef}
         width={CANVAS_WIDTH}

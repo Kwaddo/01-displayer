@@ -479,12 +479,20 @@
         width: 90%;
         translate: 5.6%;
     }
+
     .container.fullscreen .bar {
         position: absolute;
         width: 95%;
         translate: 2.7%;
     }
 
+    .hideOnTablet {
+        display: none;
+    }
+
+    .iconButton {
+        font-size: 16px;
+    }
 }
 
 @media screen and (max-width: 350px) {
@@ -550,10 +558,11 @@
     .iconButton i {
         font-size: 18px;
     }
+
     .fullscreen .title {
         font-size: 26px;
     }
-    
+
     .fullscreen .cardBody p {
         font-size: 18px;
     }
