@@ -311,14 +311,14 @@ export default function SpaceInvaders({ saveScore }: SpaceInvadersProps) {
 
   if (win) {
     return (
-      <div className="">
+      <div className={styles.container}>
         <h1 className={styles.gameOverText}>You Win!</h1>
         <p className={styles.scoreText}>Your Score: {score}</p>
         {message ? (
           <p>{message}</p>
         ) : (
           <div className={styles.topScores}>
-            <h2>Top 5 Scores</h2>
+            <h2>Bottom 5 Scores</h2>
             <ul>
               {topScores.map((score, index) => (
                 <li key={index}>

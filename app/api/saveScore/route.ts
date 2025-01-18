@@ -9,7 +9,7 @@ export async function POST(request: Request) {
 
         const result = await sql`
       UPDATE users
-      SET SIscore = ${siscore}
+      SET si_score = ${siscore}
       WHERE user_id = ${user_id}
       RETURNING *;  -- Return the updated rows
     `;

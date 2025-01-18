@@ -1,86 +1,73 @@
 .container {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	min-height: 100vh;
-}
-
-.canvas {
-	border: 1px solid #29353C;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center items horizontally */
+    justify-content: center; /* Center items vertically */
+    text-align: center; /* Center text inside the elements */
+    min-height: 100vh;
 }
 
 .startButton,
 .playAgainButton {
-	margin-top: 16px;
-	padding: 8px 16px;
-	font-size: 16px;
-	color: #70878f;
-	background-color: #1F2B30;
-	border: none;
-	border-radius: 4px;
-	cursor: pointer;
-	transition: background-color 0.3s;
-	display: block;
-	justify-self: center;
+    margin: 16px auto; /* Center buttons horizontally */
+    padding: 8px 16px;
+    font-size: 16px;
+    color: #70878f;
+    background-color: #1F2B30;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    display: inline-block;
+    text-align: center; /* Ensure text inside the button is centered */
 }
 
 .startButton:hover,
 .playAgainButton:hover {
-	background-color: #2e3f46;
+    background-color: #2e3f46;
 }
 
-.gameOverText {
-	text-align: center;
-	margin-top: 16px;
-	font-size: 24px;
-	font-weight: bold;
-	color: #29353C;
-	margin-bottom: 10px;
-}
-
+.gameOverText,
 .scoreText {
-	margin-top: 16px;
-	font-size: 14px;
-	font-weight: bold;
-	color: #29353C;
-	margin-bottom: 10px;
-	text-align: center;
+    text-align: center; /* Center text horizontally */
+    margin-top: 16px;
+    font-size: 24px;
+    font-weight: bold;
+    color: #29353C;
+    margin-bottom: 10px;
 }
 
 .winScreen {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 100vw;
-	height: 100vh;
-	background-color: #000;
-	color: #4D6269;
-	font-size: 48px;
-	font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100vw;
+    height: 100vh;
+    background-color: #000;
+    color: #4D6269;
+    font-size: 48px;
+    font-weight: bold;
+    text-align: center; /* Center text inside this block */
 }
 
 .topScores {
-	margin-top: 20px;
-	text-align: center;
-	padding: 10px;
-	border: 1px solid #ccc;
+    margin-top: 20px;
+    text-align: center;
+    padding: 10px;
+    border: 1px solid #ccc;
 }
 
 .topScores h2 {
-	font-size: 18px;
-	text-align: center;
-	margin-bottom: 10px;
+    font-size: 18px;
+    margin-bottom: 10px;
 }
 
 .topScores ul {
-	text-align: center;
-	list-style-type: none;
-	padding: 0;
+    list-style-type: none;
+    padding: 0;
 }
 
 .topScores li {
-	text-align: center;
-	font-size: 16px;
-	margin-bottom: 5px;
+    font-size: 16px;
+    margin-bottom: 5px;
 }
