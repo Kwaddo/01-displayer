@@ -114,12 +114,12 @@ export default function SpaceInvaders({ saveScore }: SpaceInvadersProps) {
       const elapsedTime = (performance.now() - startTime) / 1000;
       const finalScore = Math.max(0, Math.floor(10000 / elapsedTime));
       setScore(finalScore);
-      saveScore(finalScore);
-      const fetchTopScores = async () => {
+  
+      const saveAndFetchTopScores = async () => {
         try {
+          await saveScore(finalScore);
           const response = await fetch('/api/getFive');
           const data = await response.json();
-
           if (data.topScores) {
             setTopScores(data.topScores);
           } else if (data.message) {
@@ -128,10 +128,10 @@ export default function SpaceInvaders({ saveScore }: SpaceInvadersProps) {
             console.error('Error fetching top scores:', data.error);
           }
         } catch (error) {
-          console.error('Error fetching top scores:', error);
+          console.error('Error during save or fetch:', error);
         }
       };
-      fetchTopScores();
+      saveAndFetchTopScores();
     }
   }, [win, startTime, saveScore]);
 
