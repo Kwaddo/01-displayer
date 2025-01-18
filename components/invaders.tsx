@@ -249,7 +249,7 @@ export default function SpaceInvaders() {
     return () => {
       cancelAnimationFrame(animationFrameId)
     }
-  }, [gameStarted, gameOver, win, player, invaders, bullets, keysPressed, lastShotTime, playerImage, imageLoaded])
+  }, [gameStarted, gameOver, win, player, invaders, bullets, keysPressed, lastShotTime, playerImage, imageLoaded, enemyImage])
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!gameStarted || gameOver || win) return
