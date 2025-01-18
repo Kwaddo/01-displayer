@@ -117,7 +117,6 @@ export default function SpaceInvaders() {
 
       ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
 
-      // Draw player image
       try {
         ctx.drawImage(playerImage, player.x, player.y, player.width, player.height)
       } catch (error) {
@@ -277,6 +276,12 @@ export default function SpaceInvaders() {
     return (
       <div className="flex items-center justify-center w-screen h-screen bg-black text-white">
         <h1 className="text-6xl font-bold">You Win!</h1>
+        <button
+          onClick={startGame}
+          className={styles.playAgainButton}
+        >
+          Play Again
+        </button>
       </div>
     )
   }
