@@ -6,9 +6,10 @@ import { fetchGraphQL } from '@/utils/info';
 import { logout } from '@/utils/user';
 import styles from '@/styles/home.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUser, faSignOut, faBarChart, faChartLine, faTrophy, faGamepad, faNoteSticky, faPalette } from '@fortawesome/free-solid-svg-icons';
+import { faUser, faSignOut, faBarChart, faChartLine, faTrophy, faGamepad, faNoteSticky, faPalette, faGun } from '@fortawesome/free-solid-svg-icons';
 import Minesweeper from '@/components/minesweeper';
 import Windows98Splash from '@/components/splash';
+import SpaceInvaders from '@/components/invaders';
 
 interface Group {
   campus: string;
@@ -224,6 +225,7 @@ export default function HomePage() {
     chartContainer3: false,
     container3: false,
     container4: false,
+    container5: false,
   });
 
   const [visibleState, setVisibleState] = useState({
@@ -232,8 +234,9 @@ export default function HomePage() {
     chartContainer1: true,
     chartContainer2: true,
     chartContainer3: true,
-    container3: true,
+    container3: false,
     container4: false,
+    container5: false,
   });
   const colorMap: { [key: number]: number } = {
     1: 1,
@@ -278,10 +281,27 @@ export default function HomePage() {
   };
 
   const toggleVisibility = (containerName: string) => {
-    setVisibleState((prevState) => ({
-      ...prevState,
-      [containerName as keyof typeof visibleState]: !prevState[containerName as keyof typeof visibleState],
-    }));
+    setVisibleState((prevState) => {
+      const newVisibleState = { ...prevState };
+      newVisibleState[containerName as keyof typeof newVisibleState] = !prevState[containerName as keyof typeof prevState];
+      const fullscreenContainer = Object.keys(fullscreenState).find(
+        (key) => fullscreenState[key as keyof typeof fullscreenState]
+      );
+
+      if (fullscreenContainer) {
+        setFullscreenState((prevFullscreenState) => ({
+          ...prevFullscreenState,
+          [fullscreenContainer]: false,
+        }));
+        Object.keys(prevVisibilityState).forEach((key) => {
+          if (key !== fullscreenContainer) {
+            newVisibleState[key as keyof typeof newVisibleState] = prevVisibilityState[key];
+          }
+        });
+      }
+
+      return newVisibleState;
+    });
   };
 
   useEffect(() => {
@@ -819,13 +839,13 @@ export default function HomePage() {
       case 2:
         return '#ff6347';
       case 3:
-        return '#8a2be2'; 
+        return '#8a2be2';
       case 4:
-        return '#32cd32'; 
+        return '#32cd32';
       case 5:
-        return '#ff4500'; 
+        return '#ff4500';
       default:
-        return '#008080'; 
+        return '#008080';
     }
   };
 
@@ -1049,6 +1069,12 @@ export default function HomePage() {
               onClick={() => toggleVisibility('container4')}>
               <FontAwesomeIcon icon={faPalette} />
             </button>
+            <button
+              style={{ backgroundColor: visibleState.container5 ? '#888b8d' : '' }}
+              className={styles.iconButton}
+              onClick={() => toggleVisibility('container5')}>
+              <FontAwesomeIcon icon={faGun} />
+            </button>
             <button className={styles.iconButton} onClick={handleLogout}>
               <FontAwesomeIcon icon={faSignOut} />
             </button>
@@ -1056,7 +1082,7 @@ export default function HomePage() {
         </div>
       </div>
       {visibleState.container4 && (
-        <div className={`${styles.colorcontainer} ${fullscreenState.container3 ? styles.fullscreen : ''}`}>
+        <div className={`${styles.colorcontainer} ${fullscreenState.container4 ? styles.fullscreen : ''}`}>
           <div className={styles.bar}>
             <p>COLOR</p>
             <div className={styles.barIcons}>
@@ -1075,10 +1101,25 @@ export default function HomePage() {
                 onClick={() => setColor(colorValue)}
                 onClickCapture={() => saveColor(colorValue)}
                 aria-label={`Change color to ${colorValue}`}
-                style={{ backgroundColor: getColorByValue(colorValue) }} 
+                style={{ backgroundColor: getColorByValue(colorValue) }}
               ></button>
             ))}
           </div>
+        </div>
+      )}
+      {visibleState.container5 && (
+        <div className={`${styles.sicontainer} ${fullscreenState.container5 ? styles.fullscreen : ''}`}>
+          <div className={styles.bar}>
+            <p>SPACE INVADERS</p>
+            <div className={styles.barIcons}>
+              <button onClick={() => toggleVisibility('container5')} className={styles.svgButton} aria-label="SVG Button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
+                  <path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <SpaceInvaders />
         </div>
       )}
     </>
