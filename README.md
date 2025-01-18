@@ -75,4 +75,3 @@
 ## Interactivity
 - Most components feature fullscreen toggles and visibility controls via intuitive button icons.
 - **Logout Button**: Allows the user to exit the application.
-
