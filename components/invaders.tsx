@@ -29,6 +29,12 @@ type SpaceInvadersProps = {
   saveScore: (score: number) => void
 }
 
+type TopScore = {
+  user_id: string;
+  SIscore: number;
+};
+
+
 export default function SpaceInvaders({ saveScore }: SpaceInvadersProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [playerImage, setPlayerImage] = useState<HTMLImageElement | null>(null)
@@ -50,7 +56,7 @@ export default function SpaceInvaders({ saveScore }: SpaceInvadersProps) {
   const [lastShotTime, setLastShotTime] = useState<number>(0)
   const [startTime, setStartTime] = useState<number>(0)
   const [score, setScore] = useState<number>(0)
-  const [topScores, setTopScores] = useState<any[]>([])
+  const [topScores, setTopScores] = useState<TopScore[]>([]);
   const [message, setMessage] = useState<string>('')
 
   useEffect(() => {
