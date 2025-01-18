@@ -4,13 +4,14 @@
 	align-items: center;
 	justify-content: center;
 	min-height: 100vh;
-  }
-  
-  .canvas {
+}
+
+.canvas {
 	border: 1px solid #29353C;
-  }
-  
-  .startButton, .playAgainButton {
+}
+
+.startButton,
+.playAgainButton {
 	margin-top: 16px;
 	padding: 8px 16px;
 	font-size: 16px;
@@ -20,20 +21,22 @@
 	border-radius: 4px;
 	cursor: pointer;
 	transition: background-color 0.3s;
-  }
-  
-  .startButton:hover, .playAgainButton:hover {
+}
+
+.startButton:hover,
+.playAgainButton:hover {
 	background-color: #2e3f46;
-  }
-  
-  .gameOverText {
+}
+
+.gameOverText {
 	margin-top: 16px;
 	font-size: 24px;
 	font-weight: bold;
 	color: #29353C;
-  }
-  
-  .winScreen {
+	margin-bottom: 10px;
+}
+
+.winScreen {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -43,5 +46,4 @@
 	color: #4D6269;
 	font-size: 48px;
 	font-weight: bold;
-  }
-  
+}

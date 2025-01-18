@@ -904,7 +904,7 @@ export default function HomePage() {
                   <p><strong>Name:</strong> {capitalizeWords(userData?.firstName || '') + ' ' + capitalizeWords(userData?.lastName || '')}</p>
                   <p><strong>Email:</strong> {userData?.email}</p>
                   <p><strong>Audit Ratio:</strong> {userData?.auditRatio}</p>
-                  <p><strong>Total XP:</strong> {xpAmount} Bytes</p>
+                  <p><strong>Total XP:</strong> {xpAmount/1000} Kilobytes</p>
                   <p><strong>Module Level:</strong> {levelAmount} </p>
                   <p><strong>Last Completed:</strong> {lastProject} </p>
                   {/* Logout Button */}
@@ -1071,8 +1071,9 @@ export default function HomePage() {
             </button>
             <button
               style={{ backgroundColor: visibleState.container5 ? '#888b8d' : '' }}
-              className={styles.iconButton}
-              onClick={() => toggleVisibility('container5')}>
+              className={`${styles.iconButton} ${styles.hideOnTablet}`}
+              onClick={() => toggleVisibility('container5')}
+            >
               <FontAwesomeIcon icon={faGun} />
             </button>
             <button className={styles.iconButton} onClick={handleLogout}>
