@@ -149,6 +149,24 @@
     left: 20px;
 }
 
+.sicontainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 90vw;
+    height: 90vh;
+    padding: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    background: #c2c6ca;
+    font-size: 12px;
+    -webkit-font-smoothing: none;
+    box-shadow: 0.5px 0.5px 0 0.5px black, inset 1px 1px #C2C6CA, inset -1px -1px #85898d, inset 2px 2px white;
+    position: fixed;
+    box-sizing: border-box;
+}
+
 .colorcontainer {
     padding: 10px;
 }
@@ -400,18 +418,8 @@
     z-index: 9999;
     /* Make sure it's on top of other elements */
     width: 90vw;
-    height: 80vh;
+    height: 90vh;
     overflow: auto;
-    translate: -49% -49.25%;
-}
-
-/* Optional: you may want to adjust the header bar and icons for fullscreen */
-.fullscreen .bar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 10000;
 }
 
 .fullscreen .textarea {
@@ -426,6 +434,22 @@
     display: flex !important;
     justify-content: center !important;
     align-items: center !important;
+}
+
+.fullscreen .title {
+    font-size: 48px;
+}
+
+.fullscreen .cardBody p {
+    font-size: 24px;
+}
+
+.acontainers .fullscreen,
+.chartcontainers .fullscreen {
+    position: static;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 @media screen and (max-width: 1024px) {
@@ -443,7 +467,6 @@
         width: 100%;
         margin: 0 auto;
         padding: 0;
-        box-sizing: border-box;
     }
 
     .chartContainer {
@@ -451,9 +474,17 @@
         padding-top: 25px;
     }
 
-    .fullscreen {
-        translate: 0 -49.25%;
+    .chartContainer.fullscreen .bar {
+        position: absolute;
+        width: 90%;
+        translate: 5.6%;
     }
+    .container.fullscreen .bar {
+        position: absolute;
+        width: 95%;
+        translate: 2.7%;
+    }
+
 }
 
 @media screen and (max-width: 350px) {
@@ -517,6 +548,13 @@
     }
 
     .iconButton i {
+        font-size: 18px;
+    }
+    .fullscreen .title {
+        font-size: 26px;
+    }
+    
+    .fullscreen .cardBody p {
         font-size: 18px;
     }
 
