@@ -149,6 +149,8 @@ export default function HomePage() {
   const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
   const [isDbInitialized, setIsDbInitialized] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
+  const [siscore, setScore] = useState<number>(0);
+  const [score, saveScore] = useState<number>(0);
   const router = useRouter();
   const barChartRef = useRef(null);
   const xpChartRef = useRef(null);
@@ -357,9 +359,29 @@ export default function HomePage() {
                 setError('An error occurred while fetching color: ' + error);
               }
             };
+            const fetchScore = async () => {
+              try {
+                const response = await fetch('/api/getScore', {
+                  method: 'GET',
+                  headers: {
+                    'Authorization': userId,
+                  },
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                  setScore(data.siscore || '');
+                } else {
+                  setError(data.error || 'Failed to fetch score');
+                }
+              } catch (error) {
+                setError('An error occurred while fetching score: ' + error);
+              }
+            };
 
             fetchNotes();
             fetchColor();
+            fetchScore();
           } else {
             setError(data.error || 'Failed to insert user data');
           }
@@ -820,6 +842,36 @@ export default function HomePage() {
     }
   }, [isDbInitialized]);
 
+  const sendScore = useCallback(async (newScore: number) => {
+    console.log('Sending score:', newScore);
+    if (!isDbInitialized) {
+      setError('Database not initialized');
+      return;
+    }
+    const updatedScore = newScore || score;  // Fallback to the current score if newScore is invalid
+    if (updatedScore > score) {
+      try {
+        const response = await fetch('/api/saveScore', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: userData?.login,
+            siscore: updatedScore,
+          }),
+        });
+   
+        const data = await response.json();
+        if (!response.ok) {
+          setError(data.error || 'Failed to save score');
+        }
+      } catch (error) {
+        setError('An error occurred while saving score: ' + error);
+      }
+    }
+  }, [isDbInitialized, score]);
+
   const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = event.target.value;
     setNotebookContent(newContent);
@@ -833,6 +885,10 @@ export default function HomePage() {
   useEffect(() => {
     setColor(colorMap[colorId] || 1);
   }, [colorId]);
+
+  useEffect(() => {
+    saveScore(siscore);
+  }, [siscore]);
 
   const getColorByValue = (value: number) => {
     switch (value) {
@@ -904,7 +960,7 @@ export default function HomePage() {
                   <p><strong>Name:</strong> {capitalizeWords(userData?.firstName || '') + ' ' + capitalizeWords(userData?.lastName || '')}</p>
                   <p><strong>Email:</strong> {userData?.email}</p>
                   <p><strong>Audit Ratio:</strong> {userData?.auditRatio}</p>
-                  <p><strong>Total XP:</strong> {xpAmount/1000} Kilobytes</p>
+                  <p><strong>Total XP:</strong> {xpAmount / 1000} Kilobytes</p>
                   <p><strong>Module Level:</strong> {levelAmount} </p>
                   <p><strong>Last Completed:</strong> {lastProject} </p>
                   {/* Logout Button */}
@@ -1120,7 +1176,7 @@ export default function HomePage() {
               </button>
             </div>
           </div>
-          <SpaceInvaders />
+          <SpaceInvaders saveScore={sendScore} />
         </div>
       )}
     </>

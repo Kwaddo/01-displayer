@@ -20,3 +20,15 @@ export async function getUserByUserID(userID: string) {
         throw new Error('Error querying the database');
     }
 }
+
+export async function getAllUsersScores() {
+    try {
+      const result = await sql`
+        SELECT user_id, SIscore FROM users;
+      `;
+      return result;
+    } catch (error) {
+      console.error('Error fetching users\' scores:', error);
+      throw new Error('Error querying the database for user scores');
+    }
+  }

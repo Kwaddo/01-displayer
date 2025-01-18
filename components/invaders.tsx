@@ -25,7 +25,11 @@ type Bullet = GameObject & {
 const CANVAS_WIDTH = 800
 const CANVAS_HEIGHT = 500
 
-export default function SpaceInvaders() {
+type SpaceInvadersProps = {
+  saveScore: (score: number) => void
+}
+
+export default function SpaceInvaders({ saveScore }: SpaceInvadersProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [playerImage, setPlayerImage] = useState<HTMLImageElement | null>(null)
   const [enemyImage, setEnemyImage] = useState<HTMLImageElement | null>(null)
@@ -44,8 +48,11 @@ export default function SpaceInvaders() {
   const [win, setWin] = useState(false)
   const [keysPressed, setKeysPressed] = useState<Set<string>>(new Set())
   const [lastShotTime, setLastShotTime] = useState<number>(0)
+  const [startTime, setStartTime] = useState<number>(0)
+  const [score, setScore] = useState<number>(0)
+  const [topScores, setTopScores] = useState<any[]>([])
+  const [message, setMessage] = useState<string>('')
 
-  // Load player image
   useEffect(() => {
     const img = new Image()
     const img2 = new Image()
@@ -93,7 +100,34 @@ export default function SpaceInvaders() {
     })
     setKeysPressed(new Set())
     setLastShotTime(0)
+    setStartTime(performance.now())
   }, [initializeInvaders])
+
+  useEffect(() => {
+    if (win) {
+      const elapsedTime = (performance.now() - startTime) / 1000;
+      const finalScore = Math.max(0, Math.floor(10000 / elapsedTime));
+      setScore(finalScore);
+      saveScore(finalScore);
+      const fetchTopScores = async () => {
+        try {
+          const response = await fetch('/api/getFive');
+          const data = await response.json();
+
+          if (data.topScores) {
+            setTopScores(data.topScores);
+          } else if (data.message) {
+            setMessage(data.message);
+          } else {
+            console.error('Error fetching top scores:', data.error);
+          }
+        } catch (error) {
+          console.error('Error fetching top scores:', error);
+        }
+      };
+      fetchTopScores();
+    }
+  }, [win, startTime, saveScore]);
 
   useEffect(() => {
     if (!gameStarted || gameOver || win || !imageLoaded || !playerImage) return
@@ -128,17 +162,17 @@ export default function SpaceInvaders() {
       invaders.forEach(invader => {
         try {
           if (enemyImage) {
-            ctx.drawImage(enemyImage, invader.x, invader.y, invader.width, invader.height);
+            ctx.drawImage(enemyImage, invader.x, invader.y, invader.width, invader.height)
           } else {
-            ctx.fillStyle = 'red';
-            ctx.fillRect(invader.x, invader.y, invader.width, invader.height);
+            ctx.fillStyle = 'red'
+            ctx.fillRect(invader.x, invader.y, invader.width, invader.height)
           }
         } catch (error) {
-          console.error('Error drawing invader image:', error);
-          ctx.fillStyle = 'red';
-          ctx.fillRect(invader.x, invader.y, invader.width, invader.height);
+          console.error('Error drawing invader image:', error)
+          ctx.fillStyle = 'red'
+          ctx.fillRect(invader.x, invader.y, invader.width, invader.height)
         }
-      });
+      })
 
       ctx.fillStyle = 'yellow'
       bullets.forEach(bullet => {
@@ -271,16 +305,28 @@ export default function SpaceInvaders() {
 
   if (win) {
     return (
-      <div className="flex items-center justify-center w-screen h-screen bg-black text-white">
-        <h1 className="text-6xl font-bold">You Win!</h1>
-        <button
-          onClick={startGame}
-          className={styles.playAgainButton}
-        >
+      <div className="">
+        <h1 className={styles.gameOverText}>You Win!</h1>
+        <p className={styles.scoreText}>Your Score: {score}</p>
+        {message ? (
+          <p>{message}</p>
+        ) : (
+          <div className={styles.topScores}>
+            <h2>Top 5 Scores</h2>
+            <ul>
+              {topScores.map((score, index) => (
+                <li key={index}>
+                  {index + 1}. {score.user_id}: {score.SIscore}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <button onClick={startGame} className={styles.playAgainButton}>
           Play Again
         </button>
       </div>
-    )
+    );
   }
 
   return (
