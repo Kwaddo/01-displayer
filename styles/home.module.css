@@ -408,7 +408,6 @@
     border: 2px solid theme('colors.t-black');
 }
 
-/* This class will make the container fill the entire screen */
 .fullscreen {
     position: fixed;
     top: 0;
@@ -416,7 +415,6 @@
     right: 0;
     bottom: 0;
     z-index: 9999;
-    /* Make sure it's on top of other elements */
     width: 90vw;
     height: 90vh;
     overflow: auto;

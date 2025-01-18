@@ -121,7 +121,6 @@ export default function SpaceInvaders() {
         ctx.drawImage(playerImage, player.x, player.y, player.width, player.height)
       } catch (error) {
         console.error('Error drawing player image:', error)
-        // Fallback to rectangle if image drawing fails
         ctx.fillStyle = 'green'
         ctx.fillRect(player.x, player.y, player.width, player.height)
       }
@@ -131,13 +130,11 @@ export default function SpaceInvaders() {
           if (enemyImage) {
             ctx.drawImage(enemyImage, invader.x, invader.y, invader.width, invader.height);
           } else {
-            // Fallback to red rectangle if enemy image is not loaded
             ctx.fillStyle = 'red';
             ctx.fillRect(invader.x, invader.y, invader.width, invader.height);
           }
         } catch (error) {
           console.error('Error drawing invader image:', error);
-          // Fallback to red rectangle if enemy image drawing fails
           ctx.fillStyle = 'red';
           ctx.fillRect(invader.x, invader.y, invader.width, invader.height);
         }

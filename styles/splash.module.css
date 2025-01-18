@@ -13,7 +13,7 @@
 }
 
 .window {
-  width: 400px; 
+  width: 400px;
   background-color: #C0C0C0;
   border: 2px solid #000;
   border-radius: 10px;
@@ -29,53 +29,49 @@
   font-family: 'MS Sans Serif', sans-serif;
 }
 
-/* Content styles */
 .content {
   padding: 20px;
   font-family: 'MS Sans Serif', sans-serif;
   color: #000000;
 }
 
-/* Loading text with blinking animation */
 .loadingText {
   font-size: 18px;
   font-weight: bold;
   animation: blink 1s step-end infinite;
 }
 
-/* Blink animation for "Loading..." text */
 @keyframes blink {
   50% {
     opacity: 0;
   }
 }
 
-/* Mobile/Tablet adjustments */
 @media (max-width: 1024px) {
   .window {
-    width: 300px; /* Smaller width for tablets */
+    width: 300px;
   }
 
   .content {
-    padding: 15px; /* Slightly reduced padding */
+    padding: 15px;
   }
 
   .loadingText {
-    font-size: 16px; /* Adjust font size */
+    font-size: 16px;
   }
 }
 
 @media (max-width: 640px) {
   .window {
-    width: 250px; /* Smaller width for mobile */
-    padding: 10px; /* Reduced padding */
+    width: 250px;
+    padding: 10px;
   }
 
   .content {
-    padding: 10px; /* Further reduce padding */
+    padding: 10px;
   }
 
   .loadingText {
-    font-size: 14px; /* Adjust font size for mobile */
+    font-size: 14px;
   }
 }
