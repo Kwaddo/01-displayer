@@ -1,4 +1,3 @@
-// app/api/insertUser/route.ts
 import { NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
 
@@ -10,7 +9,7 @@ export async function POST(request: Request) {
     const existingUser = await sql`
       SELECT * FROM users WHERE user_id = ${userId}
     `;
-    
+
     if (existingUser.length > 0) {
       return NextResponse.json({
         message: 'User already exists.',

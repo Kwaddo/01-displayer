@@ -21,6 +21,8 @@
 	border-radius: 4px;
 	cursor: pointer;
 	transition: background-color 0.3s;
+	display: block;
+	justify-self: center;
 }
 
 .startButton:hover,
@@ -29,11 +31,21 @@
 }
 
 .gameOverText {
+	text-align: center;
 	margin-top: 16px;
 	font-size: 24px;
 	font-weight: bold;
 	color: #29353C;
 	margin-bottom: 10px;
+}
+
+.scoreText {
+	margin-top: 16px;
+	font-size: 14px;
+	font-weight: bold;
+	color: #29353C;
+	margin-bottom: 10px;
+	text-align: center;
 }
 
 .winScreen {
@@ -46,4 +58,29 @@
 	color: #4D6269;
 	font-size: 48px;
 	font-weight: bold;
+}
+
+.topScores {
+	margin-top: 20px;
+	text-align: center;
+	padding: 10px;
+	border: 1px solid #ccc;
+}
+
+.topScores h2 {
+	font-size: 18px;
+	text-align: center;
+	margin-bottom: 10px;
+}
+
+.topScores ul {
+	text-align: center;
+	list-style-type: none;
+	padding: 0;
+}
+
+.topScores li {
+	text-align: center;
+	font-size: 16px;
+	margin-bottom: 5px;
 }
