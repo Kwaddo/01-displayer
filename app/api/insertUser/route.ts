@@ -7,8 +7,6 @@ const sql = neon(process.env.DATABASE_URL!);
 export async function POST(request: Request) {
   try {
     const { userId, token } = await request.json();
-
-    // Check if user already exists
     const existingUser = await sql`
       SELECT * FROM users WHERE user_id = ${userId}
     `;
@@ -19,7 +17,6 @@ export async function POST(request: Request) {
       });
     }
 
-    // Insert new user into the database
     await sql`
       INSERT INTO users (user_id, token)
       VALUES (${userId}, ${token})
