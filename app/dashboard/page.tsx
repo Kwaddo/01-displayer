@@ -766,7 +766,7 @@ export default function HomePage() {
     initializeDatabase();
   }, []);
 
-  const saveNotes = useCallback(async (newContent: any) => {
+  const saveNotes = useCallback(async (newContent: string) => {
     if (!isDbInitialized) {
       setError('Database not initialized');
       return;
@@ -793,7 +793,7 @@ export default function HomePage() {
     }
   }, [isDbInitialized]);
 
-  const saveColor = useCallback(async (newColor: any) => {
+  const saveColor = useCallback(async (newColor: number) => {
     if (!isDbInitialized) {
       setError('Database not initialized');
       return;
