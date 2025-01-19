@@ -10,6 +10,7 @@ import { faUser, faSignOut, faBarChart, faChartLine, faTrophy, faGamepad, faNote
 import Minesweeper from '@/components/minesweeper';
 import Windows98Splash from '@/components/splash';
 import SpaceInvaders from '@/components/invaders';
+import Graph from '@/components/graph';
 
 interface Group {
   campus: string;
@@ -46,29 +47,6 @@ interface GameData {
   name: string;
   level: number;
   attempts: number;
-}
-
-interface ApexTooltipSeriesData {
-  x: string;
-  y: number;
-  level: number;
-  attempts: number;
-}
-
-interface ApexTooltipSeries {
-  data: ApexTooltipSeriesData[];
-}
-
-interface ApexTooltipConfig {
-  series: ApexTooltipSeries[];
-}
-
-interface ApexTooltip {
-  seriesIndex: number;
-  dataPointIndex: number;
-  w: {
-    config: ApexTooltipConfig;
-  };
 }
 
 const query = `query User {
@@ -152,9 +130,6 @@ export default function HomePage() {
   const [siscore, setScore] = useState<number>(0);
   const [score, saveScore] = useState<number>(0);
   const router = useRouter();
-  const barChartRef = useRef(null);
-  const xpChartRef = useRef(null);
-  const gameRef = useRef(null);
 
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -394,364 +369,6 @@ export default function HomePage() {
     }
   }, [isDbInitialized, userData]);
 
-  useEffect(() => {
-    if (!isClient) return;
-    if (userData && xpDistribution.length > 0) {
-      if (visibleState.chartContainer1) {
-        import('apexcharts').then((ApexCharts) => {
-          const barChartOptions = {
-            chart: {
-              type: 'bar',
-              height: '100%',
-              width: 600,
-              toolbar: { show: false },
-            },
-            series: [
-              {
-                name: 'Audit Ratio',
-                data: [
-                  {
-                    x: 'Done',
-                    y: userData.totalUp / 1000,
-                  },
-                  {
-                    x: 'Received',
-                    y: userData.totalDown / 1000,
-                    fillColor: '#FF3D3D',
-                  },
-                ],
-                zIndex: 5,
-              },
-            ],
-            dataLabels: {
-              enabled: false,
-            },
-            plotOptions: {
-              bar: {
-                horizontal: true,
-                borderRadius: 4,
-                barHeight: '70%',
-              },
-            },
-            xaxis: {
-              labels: {
-                style: {
-                  fontSize: '14px',
-                  fontFamily: '"MS Sans Serif", sans-serif',
-                },
-                show: false,
-              },
-              tickAmount: 0,
-              axisTicks: {
-                show: false
-              }
-            },
-            yaxis: {
-              categories: ['Done', 'Received'],
-              labels: {
-                style: {
-                  fontSize: '14px',
-                  fontFamily: '"MS Sans Serif", sans-serif',
-                  fontWeight: 'bold',
-                },
-              },
-            },
-            colors: ['#008080'],
-            responsive: [
-              {
-                breakpoint: 1024,
-                options: {
-                  chart: {
-                    width: '77.5%',
-                  },
-                  plotOptions: {
-                    bar: {
-                      horizontal: true,
-                      borderRadius: 4,
-                    },
-                  },
-                },
-              },
-              {
-                breakpoint: 480,
-                options: {
-                  chart: {
-                    width: '77.5%',
-                  },
-                },
-              },
-            ],
-          };
-
-          const barChart = new ApexCharts.default(barChartRef.current, barChartOptions);
-          barChart.render();
-
-          return () => {
-            barChart.destroy();
-          };
-        });
-      }
-      if (visibleState.chartContainer2) {
-        import('apexcharts').then((ApexCharts) => {
-          const xpChartOptions = {
-            chart: {
-              type: 'bar',
-              height: '100%',
-              width: 600,
-              toolbar: { show: false },
-            },
-            series: [{
-              name: 'Users',
-              data: xpDistribution
-                .slice()
-                .reverse()
-                .map((item) => ({
-                  x: item.xp.toString(),
-                  y: item.count,
-                  fillColor: item.xp.toString() === levelAmount.toString() ? '#4D6269' : '#29353C',
-                })),
-            }],
-            dataLabels: {
-              enabled: false,
-            },
-            plotOptions: {
-              bar: {
-                horizontal: false,
-                borderRadius: 4,
-              },
-            },
-            xaxis: {
-              title: {
-                text: 'User',
-                style: {
-                  fontSize: '24px',
-                  fontFamily: '"MS Sans Serif", sans-serif',
-                  fontWeight: 'bold',
-                },
-              },
-              labels: {
-                show: false,
-              }
-            },
-            yaxis: {
-              title: {
-                text: 'User Level',
-                style: {
-                  fontSize: '24px',
-                  fontFamily: '"MS Sans Serif", sans-serif',
-                  fontWeight: 'bold',
-                },
-              },
-              categories: xpDistribution
-                .slice()
-                .reverse()
-                .map((item) => item.xp.toString()),
-              labels: {
-                show: false,
-                rotate: 0,
-              },
-            },
-            colors: [undefined],
-            responsive: [
-              {
-                breakpoint: 768,
-                options: {
-                  chart: {
-                    width: '77.5%',
-                  },
-                  plotOptions: {
-                    bar: {
-                      horizontal: true,
-                      borderRadius: 4,
-                    },
-                  },
-                  yaxis: {
-                    labels: {
-                      show: true,
-                    },
-                  },
-                  xaxis: {
-                    labels: {
-                      show: true,
-                    }
-                  },
-                },
-              },
-              {
-                breakpoint: 480,
-                options: {
-                  chart: {
-                    width: '77.5%',
-                  },
-                  yaxis: {
-                    labels: {
-                      show: true,
-                    },
-                  },
-                  xaxis: {
-                    labels: {
-                      show: true,
-                    }
-                  },
-                },
-              },
-            ],
-          };
-
-          const xpChart = new ApexCharts.default(xpChartRef.current, xpChartOptions);
-          xpChart.render();
-
-          const totalUsers = xpDistribution.reduce((acc, item) => acc + item.count, 0);
-          setTotalUsers(totalUsers);
-
-          return () => {
-            xpChart.destroy();
-          };
-        });
-      }
-      if (visibleState.chartContainer3) {
-        import('apexcharts').then((ApexCharts) => {
-          const gameNames = [...new Set(gameData.map((item: GameData) => item.name))];
-          const gameLevels = [...new Set(gameData.map((item: GameData) => item.level))];
-
-          const dataMatrix = gameLevels.map((level) => {
-            return gameNames.map((game) => {
-              const gameDataForLevel = gameData.find(
-                (item) => item.name === game && item.level === level
-              );
-              return gameDataForLevel ? gameDataForLevel.attempts : 0;
-            });
-          });
-
-          const gameChartOptions = {
-            chart: {
-              type: 'heatmap',
-              height: '100%',
-              width: '100%',
-              toolbar: { show: false },
-            },
-            tooltip: {
-              enabled: true,
-              custom: function ({ seriesIndex, dataPointIndex, w }: ApexTooltip) {
-                const data = w.config.series[seriesIndex].data[dataPointIndex] as ApexTooltipSeriesData;
-                return `<div class="custom-tooltip">
-                  <span>Level: ${data.level}</span><br/>
-                  <span>Game: ${data.x}</span><br/>
-                  <span>Attempts: ${data.attempts}</span>
-                </div>`;
-              },
-              style: {
-                fontSize: '12px',
-              },
-            },
-            dataLabels: {
-              enabled: false,
-            },
-            series: dataMatrix.map((data, idx) => ({
-              name: gameLevels[idx],
-              data: data.map((item, i) => ({
-                x: gameNames[i],
-                y: item,
-                level: gameLevels[idx],
-                attempts: item,
-              })),
-            })),
-            xaxis: {
-              categories: gameNames.map((word: unknown) => typeof word === 'string' ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : String(word)),
-              title: {
-                text: 'Games',
-                style: {
-                  fontSize: '16px',
-                },
-              },
-              labels: {
-                style: {
-                  fontSize: '14px',
-                  colors: '#333',
-                },
-              },
-            },
-            yaxis: {
-              categories: gameLevels,
-              title: {
-                text: 'Levels',
-                style: {
-                  fontSize: '16px',
-                },
-              },
-              labels: {
-                style: {
-                  fontSize: '12px',
-                },
-                show: false,
-              },
-            },
-            colors: ['#4D6269', '#29353C', '#1F2B30', '#141B1F'],
-            plotOptions: {
-              heatmap: {
-                colorScale: {
-                  ranges: [
-                    {
-                      from: 0,
-                      to: 1,
-                      name: 'Low',
-                      color: '#4D6269',
-                    },
-                    {
-                      from: 1,
-                      to: 5,
-                      name: 'Medium',
-                      color: '#29353C',
-                    },
-                    {
-                      from: 5,
-                      to: 10,
-                      name: 'High',
-                      color: '#1F2B30',
-                    },
-                    {
-                      from: 10,
-                      to: 20,
-                      name: 'Very High',
-                      color: '#141B1F',
-                    },
-                  ],
-                },
-              },
-            },
-            legend: {
-              show: false,
-            },
-            responsive: [
-              {
-                breakpoint: 1024,
-                options: {
-                  chart: {
-                    width: '77.5%',
-                  },
-                },
-              },
-              {
-                breakpoint: 480,
-                options: {
-                  chart: {
-                    width: '77.5%',
-                  },
-                },
-              },
-            ],
-          };
-
-          const gameChart = new ApexCharts.default(gameRef.current, gameChartOptions);
-          gameChart.render();
-
-          return () => gameChart.destroy();
-        })
-      }
-    }
-  }, [visibleState, isClient, userData, xpDistribution, gameData, levelAmount]);
-
-
   const handleLogout = () => {
     logout();
     setError(null);
@@ -861,7 +478,7 @@ export default function HomePage() {
             siscore: updatedScore,
           }),
         });
-   
+
         const data = await response.json();
         if (!response.ok) {
           setError(data.error || 'Failed to save score');
@@ -998,7 +615,6 @@ export default function HomePage() {
           {/* Audit Ratio Bar Chart */}
           {visibleState.chartContainer1 && (
             <div className={`${styles.chartContainer} ${fullscreenState.chartContainer1 ? styles.fullscreen : ''}`}>
-              <div ref={barChartRef}></div>
               <div className={styles.bar}>
                 <p>AUDIT RATIO</p>
                 <div className={styles.barIcons}>
@@ -1014,13 +630,15 @@ export default function HomePage() {
                   </button>
                 </div>
               </div>
+              {userData && (
+                <Graph GetChart="BarChart" userData={userData} />
+              )}
             </div>
           )}
 
           {/* XP Distribution Chart */}
           {visibleState.chartContainer2 && (
             <div className={`${styles.chartContainer} ${fullscreenState.chartContainer2 ? styles.fullscreen : ''}`} >
-              <div ref={xpChartRef}></div>
               <div className={styles.bar}>
                 <p>USER LEVELS ({totalUsers} USERS)</p>
                 <div className={styles.barIcons}>
@@ -1036,13 +654,13 @@ export default function HomePage() {
                   </button>
                 </div>
               </div>
+              <Graph GetChart="XpChart" xpDistribution={xpDistribution} levelAmount={levelAmount} />
             </div>
           )}
         </div>
         <div className={styles.chartcontainers}>
           {visibleState.chartContainer3 && (
             <div className={`${styles.chartContainer} ${fullscreenState.chartContainer3 ? styles.fullscreen : ''}`} >
-              <div ref={gameRef}></div>
               <div className={styles.bar}>
                 <p>GAME INFO</p>
                 <div className={styles.barIcons}>
@@ -1058,6 +676,7 @@ export default function HomePage() {
                   </button>
                 </div>
               </div>
+              <Graph GetChart="HeatMap" gameData={gameData} />
             </div>
           )}
           {visibleState.container3 && (
