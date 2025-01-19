@@ -1,16 +1,20 @@
 "use client";
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import dynamic from 'next/dynamic';
+import { Suspense } from 'react';
+
+const DynamicGraph = dynamic(() => import('@/components/graph'), { ssr: false });
+const DynamicMinesweeper = dynamic(() => import('@/components/minesweeper'), { ssr: false });
+const DynamicSpaceInvaders = dynamic(() => import('@/components/invaders'), { ssr: false });
+
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { fetchGraphQL } from '@/utils/info';
 import { logout } from '@/utils/user';
 import styles from '@/styles/home.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUser, faSignOut, faBarChart, faChartLine, faTrophy, faGamepad, faNoteSticky, faPalette, faGun } from '@fortawesome/free-solid-svg-icons';
-import Minesweeper from '@/components/minesweeper';
 import Windows98Splash from '@/components/splash';
-import SpaceInvaders from '@/components/invaders';
-import Graph from '@/components/graph';
 
 interface Group {
   campus: string;
@@ -104,13 +108,6 @@ const query = `query User {
 }`;
 
 export default function HomePage() {
-  useEffect(() => {
-    setIsClient(true);
-    document.body.classList.add('dashboard-background');
-    return () => {
-      document.body.classList.remove('dashboard-background');
-    };
-  }, []);
   const [userData, setUserData] = useState<User | null>(null);
   const [xpDistribution, setXpDistribution] = useState<XpData[]>([]);
   const [gameData, setGameData] = useState<GameData[]>([]);
@@ -121,6 +118,19 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (isClient) {
+      document.body.classList.add('dashboard-background');
+      return () => {
+        document.body.classList.remove('dashboard-background');
+      };
+    }
+  }, [isClient])
   const [notebookContent, setNotebookContent] = useState('');
   const [colorId, getColor] = useState<number>(0);
   const [color, setColor] = useState<number>(0);
@@ -143,6 +153,10 @@ export default function HomePage() {
 
     const fetchData = async () => {
       try {
+        if (window === undefined) {
+          console.error('window is undefined');
+          return;
+        }
         const token = window?.localStorage?.getItem('jwtToken');
         if (!token) {
           router.replace('/signin');
@@ -176,6 +190,8 @@ export default function HomePage() {
             count: typeof count === 'number' ? count : parseFloat(String(count)),
           })).sort((a, b) => b.xp - a.xp);
           setXpDistribution(xpData);
+          const totalUsers = xpData.reduce((acc, item) => acc + item.count, 0);
+          setTotalUsers(totalUsers);
           const gData = data?.toad_session_game_results.map((result: { result: { name: string }, level: number, attempts: number }) => ({
             name: result.result.name,
             level: result.level,
@@ -282,8 +298,11 @@ export default function HomePage() {
   };
 
   useEffect(() => {
-    const userToken = localStorage.getItem('jwtToken');
+    const userToken = window?.localStorage.getItem('jwtToken');
     const userId = userData?.login;
+    // if (!userToken || !userId) {
+    //   router.push('/signin');
+    // }
     if (isDbInitialized && userId && userToken) {
       const insertUserData = async () => {
         try {
@@ -631,7 +650,9 @@ export default function HomePage() {
                 </div>
               </div>
               {userData && (
-                <Graph GetChart="BarChart" userData={userData} />
+                <Suspense fallback={<div>Loading chart...</div>}>
+                  <DynamicGraph GetChart="BarChart" userData={userData} />
+                </Suspense>
               )}
             </div>
           )}
@@ -654,7 +675,11 @@ export default function HomePage() {
                   </button>
                 </div>
               </div>
-              <Graph GetChart="XpChart" xpDistribution={xpDistribution} levelAmount={levelAmount} />
+              {xpDistribution && levelAmount && (
+                <Suspense fallback={<div>Loading chart...</div>}>
+                  <DynamicGraph GetChart="XpChart" xpDistribution={xpDistribution} levelAmount={levelAmount} />
+                </Suspense>
+              )}
             </div>
           )}
         </div>
@@ -676,7 +701,11 @@ export default function HomePage() {
                   </button>
                 </div>
               </div>
-              <Graph GetChart="HeatMap" gameData={gameData} />
+              {gameData && (
+                <Suspense fallback={<div>Loading chart...</div>}>
+                  <DynamicGraph GetChart="HeatMap" gameData={gameData} />
+                </Suspense>
+              )}
             </div>
           )}
           {visibleState.container3 && (
@@ -696,7 +725,9 @@ export default function HomePage() {
                   </button>
                 </div>
               </div>
-              <Minesweeper />
+              <Suspense fallback={<div>Loading Minesweeper...</div>}>
+                <DynamicMinesweeper />
+              </Suspense>
             </div>
           )}
         </div>
@@ -795,7 +826,9 @@ export default function HomePage() {
               </button>
             </div>
           </div>
-          <SpaceInvaders saveScore={sendScore} />
+          <Suspense fallback={<div>Loading Space Invaders...</div>}>
+            <DynamicSpaceInvaders saveScore={sendScore} />
+          </Suspense>
         </div>
       )}
     </>
