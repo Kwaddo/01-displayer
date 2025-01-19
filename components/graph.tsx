@@ -321,8 +321,6 @@ const Graph: React.FC<GraphProps> = ({
             if (chart) chart.destroy();
         };
     }, [GetChart, userData, xpDistribution, gameData, levelAmount, setTotalUsers]);
-
-    // Ensure a valid ReactNode is returned
     return <div ref={chartRef}></div>;
 };
 

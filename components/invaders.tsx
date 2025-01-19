@@ -180,7 +180,7 @@ export default function SpaceInvaders({ saveScore }: SpaceInvadersProps) {
         }
       })
 
-      ctx.fillStyle = 'yellow'
+      ctx.fillStyle = 'red'
       bullets.forEach(bullet => {
         ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height)
       })

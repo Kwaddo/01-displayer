@@ -1,15 +1,15 @@
 .container {
     display: flex;
     flex-direction: column;
-    align-items: center; /* Center items horizontally */
-    justify-content: center; /* Center items vertically */
-    text-align: center; /* Center text inside the elements */
+    align-items: center;
+    justify-content: center; 
+    text-align: center; 
     min-height: 80vh;
 }
 
 .startButton,
 .playAgainButton {
-    margin: 16px auto; /* Center buttons horizontally */
+    margin: 16px auto;
     padding: 8px 16px;
     font-size: 16px;
     color: #70878f;
@@ -19,7 +19,7 @@
     cursor: pointer;
     transition: background-color 0.3s;
     display: inline-block;
-    text-align: center; /* Ensure text inside the button is centered */
+    text-align: center;
 }
 
 .startButton:hover,
@@ -29,7 +29,7 @@
 
 .gameOverText,
 .scoreText {
-    text-align: center; /* Center text horizontally */
+    text-align: center;
     margin-top: 16px;
     font-size: 24px;
     font-weight: bold;
@@ -47,7 +47,7 @@
     color: #4D6269;
     font-size: 48px;
     font-weight: bold;
-    text-align: center; /* Center text inside this block */
+    text-align: center; 
 }
 
 .topScores {
