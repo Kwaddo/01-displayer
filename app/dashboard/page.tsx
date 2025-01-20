@@ -300,9 +300,6 @@ export default function HomePage() {
   useEffect(() => {
     const userToken = window?.localStorage.getItem('jwtToken');
     const userId = userData?.login;
-    // if (!userToken || !userId) {
-    //   router.push('/signin');
-    // }
     if (isDbInitialized && userId && userToken) {
       const insertUserData = async () => {
         try {

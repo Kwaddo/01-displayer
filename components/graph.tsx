@@ -113,11 +113,14 @@ const Graph: React.FC<GraphProps> = ({
                         series: [
                             {
                                 name: 'Users',
-                                data: xpDistribution.map((item) => ({
-                                    x: item.xp.toString(),
-                                    y: item.count,
-                                    fillColor: item.xp.toString() === levelAmount.toString() ? '#4D6269' : '#29353C',
-                                })),
+                                data: xpDistribution
+                                    .slice()
+                                    .sort((a, b) => a.xp - b.xp)
+                                    .map((item) => ({
+                                        x: item.xp.toString(),
+                                        y: item.count,
+                                        fillColor: item.xp.toString() === levelAmount.toString() ? '#4D6269' : '#29353C',
+                                    })),
                             },
                         ],
                         dataLabels: {
