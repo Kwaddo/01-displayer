@@ -705,6 +705,8 @@ export default function HomePage() {
               )}
             </div>
           )}
+        </div>
+        <div className={styles.chartcontainers}>
           {visibleState.container3 && (
             <div className={`${styles.container} ${fullscreenState.container3 ? styles.fullscreen : ''}`}>
               <div className={styles.bar}>
