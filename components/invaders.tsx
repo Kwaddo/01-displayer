@@ -338,7 +338,7 @@ export default function SpaceInvaders({ saveScore }: SpaceInvadersProps) {
   return (
     <div className={styles.container}>
       <div className={styles.gameOverText}>
-        Space Invaders! Use Right/Left Arrow Keys to move. Press Space to shoot.
+        Space Invaders! Use Right/Left Arrow Keys to move. Press/Hold Space to shoot.
       </div>
       <canvas
         ref={canvasRef}
