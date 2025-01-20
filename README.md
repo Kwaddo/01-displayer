@@ -1,6 +1,8 @@
-# 01-displayer Components
+# 01-displayer
 
-01-displayer is a GraphQL based project made using Next.js. It receives certain information within the reboot website and allows other information displayed within the database made for it. 
+01-displayer is a GraphQL based project made using Next.js. It receives certain information within the reboot Bahrain intra website and allows other information displayed within the database made for it. 
+
+![alt text](./public/preview.png)
 
 ## Components Overview
 
