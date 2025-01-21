@@ -7,7 +7,7 @@ const DynamicGraph = dynamic(() => import('@/components/graph'), { ssr: false })
 const DynamicMinesweeper = dynamic(() => import('@/components/minesweeper'), { ssr: false });
 const DynamicSpaceInvaders = dynamic(() => import('@/components/invaders'), { ssr: false });
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { fetchGraphQL } from '@/utils/info';
 import { logout } from '@/utils/user';
@@ -231,13 +231,13 @@ export default function HomePage() {
     container4: false,
     container5: false,
   });
-  const colorMap: { [key: number]: number } = {
+  const colorMap = useMemo(() => ({
     1: 1,
     2: 2,
     3: 3,
     4: 4,
     5: 5,
-  };
+  }), []);
   const [prevVisibilityState, setPrevVisibilityState] = useState<Record<string, boolean>>({});
 
   const toggleFullscreen = (container: string) => {
@@ -446,7 +446,7 @@ export default function HomePage() {
     } catch (error) {
       setError('An error occurred while saving notes: ' + error);
     }
-  }, [isDbInitialized]);
+  }, [isDbInitialized, userData?.login]);
 
   const saveColor = useCallback(async (newColor: number) => {
     if (!isDbInitialized) {
@@ -473,7 +473,7 @@ export default function HomePage() {
     } catch (error) {
       setError('An error occurred while saving color: ' + error);
     }
-  }, [isDbInitialized]);
+  }, [isDbInitialized, userData?.login]);
 
   const sendScore = useCallback(async (newScore: number) => {
     console.log('Sending score:', newScore);
@@ -503,7 +503,7 @@ export default function HomePage() {
         setError('An error occurred while saving score: ' + error);
       }
     }
-  }, [isDbInitialized, score]);
+  }, [isDbInitialized, score, userData?.login]);
 
   const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = event.target.value;
@@ -516,8 +516,8 @@ export default function HomePage() {
   };
 
   useEffect(() => {
-    setColor(colorMap[colorId] || 1);
-  }, [colorId]);
+    setColor(colorMap[colorId as keyof typeof colorMap] || 1);
+  }, [colorId, colorMap]);
 
   useEffect(() => {
     saveScore(siscore);
