@@ -69,6 +69,7 @@ const auditQuery = `query Audits($uid: Int!) {
   }) {
     auditorId
     auditorLogin
+    auditor { avatarUrl }
     auditedAt
     createdAt
     group {
@@ -314,7 +315,7 @@ export default function HomePage() {
           setGameData(gData);
           try {
             const auditData = await fetchGraphQL(auditQuery, { uid: loggedInUser.id });
-            type Row = { auditorId: number; auditorLogin: string; auditedAt: string | null; createdAt: string; group: { id: number; eventId: number; event: { path: string } } };
+            type Row = { auditorId: number; auditorLogin: string; auditor?: { avatarUrl: string | null } | null; auditedAt: string | null; createdAt: string; group: { id: number; eventId: number; event: { path: string } } };
             const rows: Row[] = auditData?.audit || [];
             const summarize = (list: Row[]): MentorEntry[] => {
               const stats: Record<number, MentorEntry & { groups: Set<number> }> = {};
@@ -343,16 +344,38 @@ export default function HomePage() {
               });
             }
             const myCohorts = cohorts[loggedInUser.id] || new Set<number>();
+            // Current "Audit Mentor" avatar holders, and since when (avatar file's Last-Modified).
+            const mentorSince: Record<number, number> = {};
+            try {
+              const urls = Array.from(new Set(rows.map((r) => r.auditor?.avatarUrl).filter((u): u is string => !!u)));
+              if (urls.length > 0) {
+                const res = await fetch('/api/mentorAvatars', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ urls }),
+                });
+                const { avatars } = await res.json();
+                rows.forEach((r) => {
+                  const a = r.auditor?.avatarUrl ? avatars?.[r.auditor.avatarUrl] : null;
+                  if (a?.mentor && a.since) mentorSince[r.auditorId] = Date.parse(a.since);
+                });
+              }
+            } catch (avatarErr) {
+              console.error('Failed to check mentor avatars:', avatarErr);
+            }
             const sameCohort = (auditorId: number) => Array.from(cohorts[auditorId] || []).some((e) => myCohorts.has(e));
             const wasMentor = (r: Row) => {
               if (r.group.event?.path?.includes('piscine')) return false;
               const t = Date.parse(r.auditedAt || r.createdAt);
+              if (mentorSince[r.auditorId] !== undefined && t >= mentorSince[r.auditorId]) return true;
               return MENTOR_ROSTER.some((m) => {
                 if (m.login.toLowerCase() !== r.auditorLogin.toLowerCase()) return false;
                 if (m.from || m.to) {
                   return (!m.from || t >= Date.parse(m.from)) && (!m.to || t <= Date.parse(m.to) + 86400000);
                 }
                 if (m.kind === 'tech') return true;
+                // Undated student mentor: the Audit Mentor avatar date wins when we have it.
+                if (mentorSince[r.auditorId] !== undefined) return false;
                 return !sameCohort(r.auditorId);
               });
             };

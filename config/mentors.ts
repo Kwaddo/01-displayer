@@ -1,7 +1,8 @@
-// Mentor roster. Only people listed here can count as mentor auditors. An audit counts when:
+// Mentor roster (manual overrides). Students currently wearing the platform's "Audit Mentor"
+// profile picture are detected automatically (app/api/mentorAvatars): their audits count from
+// the date that avatar was applied. This roster covers everyone else. An audit counts when:
 //   - the entry is `kind: 'tech'` with no dates (tech mentors always count), or
-//   - the entry has `from` / `to` dates and the audit falls inside them (use this for a student
-//     mentor in the SAME cohort as the audited person), or
+//   - the entry has `from` / `to` dates and the audit falls inside them, or
 //   - the entry has no dates (student mentor) and the auditor is NOT in the audited person's cohort.
 export interface MentorPeriod {
   login: string;
