@@ -396,7 +396,7 @@ export default function HomePage() {
             const sameCohort = (auditorId: number) => Array.from(cohorts[auditorId] || []).some((e) => myCohorts.has(e));
             type Period = { userId: number; label: string; since: string; endedAt: string | null };
             const dayStart = (iso: string) => Date.parse(iso.slice(0, 10));
-            // Decision order: roster dates (manual override) > added-by-hand audit > Staff > recorded Tech Team periods (from the
+            // Decision order: roster dates (manual override) > added-by-hand audit > recorded Tech Team periods (from the
             // Neon mentor registry, including ended ones) > Audit Mentor avatar date > undated roster entry.
             const makeWasMentor = (periods: Period[]) => (r: Row) => {
               const isPiscine = !!r.group.event?.path?.includes('piscine');
@@ -408,7 +408,6 @@ export default function HomePage() {
               }
               if (manualAdd.has(r)) return true;
               const own = periods.filter((p) => p.userId === r.auditorId);
-              if (own.some((p) => p.label === 'Staff')) return true;
               const techPeriods = own.filter((p) => p.label === 'Tech Team');
               const tech = techPeriods.length > 0;
               if (techPeriods.some((p) => t >= dayStart(p.since) && (!p.endedAt || t <= Date.parse(p.endedAt)))) return true;
