@@ -16,6 +16,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUser, faSignOut, faBarChart, faChartLine, faTrophy, faGamepad, faNoteSticky, faPalette, faGun, faMedal } from '@fortawesome/free-solid-svg-icons';
 import Windows98Splash from '@/components/splash';
 import Window, { WinState } from '@/components/window';
+import { MENTOR_ROSTER } from '@/config/mentors';
 import winStyles from '@/styles/window.module.css';
 
 interface Group {
@@ -54,7 +55,6 @@ interface MentorEntry {
   login: string;
   count: number;
   projects: number;
-  mentorOf: number;
   first: string;
   last: string;
 }
@@ -156,7 +156,7 @@ const WIN_TITLES: Record<WinId, string> = {
   audit: 'AUDIT RATIO',
   levels: 'USER LEVELS',
   game: 'GAME INFO',
-  mentors: 'MENTOR LEADERBOARD',
+  mentors: 'AUDITOR LEADERBOARD',
   mines: 'MINESWEEPER',
   color: 'COLOR',
   invaders: 'SPACE INVADERS',
@@ -210,6 +210,8 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [mentors, setMentors] = useState<MentorEntry[]>([]);
+  const [allAuditors, setAllAuditors] = useState<MentorEntry[]>([]);
+  const [auditTab, setAuditTab] = useState<'mentors' | 'all'>('mentors');
 
   useEffect(() => {
     setIsClient(true);
@@ -303,29 +305,31 @@ export default function HomePage() {
             const auditData = await fetchGraphQL(auditQuery, { uid: loggedInUser.id });
             type Row = { auditorId: number; auditorLogin: string; auditedAt: string | null; createdAt: string; group: { id: number } };
             const rows: Row[] = auditData?.audit || [];
-            // per project: how many audits each auditor did -> the top one is that project's mentor
-            const perGroup: Record<number, Record<number, number>> = {};
-            const stats: Record<number, MentorEntry & { groups: Set<number> }> = {};
-            rows.forEach((r) => {
-              const when = r.auditedAt || r.createdAt;
-              const e = stats[r.auditorId] || (stats[r.auditorId] = { login: r.auditorLogin, count: 0, projects: 0, mentorOf: 0, first: when, last: when, groups: new Set() });
-              e.count++;
-              e.groups.add(r.group.id);
-              if (when < e.first) e.first = when;
-              if (when > e.last) e.last = when;
-              const g = perGroup[r.group.id] || (perGroup[r.group.id] = {});
-              g[r.auditorId] = (g[r.auditorId] || 0) + 1;
-            });
-            Object.values(perGroup).forEach((g) => {
-              const top = Object.entries(g).sort((a, b) => b[1] - a[1])[0];
-              if (top && g[Number(top[0])] > 1) stats[Number(top[0])].mentorOf++;
-            });
-            setMentors(
-              Object.values(stats)
-                .map((e) => ({ login: e.login, count: e.count, projects: e.groups.size, mentorOf: e.mentorOf, first: e.first, last: e.last }))
-                .sort((a, b) => b.mentorOf - a.mentorOf || b.count - a.count)
-                .slice(0, 10)
-            );
+            const summarize = (list: Row[]): MentorEntry[] => {
+              const stats: Record<number, MentorEntry & { groups: Set<number> }> = {};
+              list.forEach((r) => {
+                const when = r.auditedAt || r.createdAt;
+                const e = stats[r.auditorId] || (stats[r.auditorId] = { login: r.auditorLogin, count: 0, projects: 0, first: when, last: when, groups: new Set() });
+                e.count++;
+                e.groups.add(r.group.id);
+                if (when < e.first) e.first = when;
+                if (when > e.last) e.last = when;
+              });
+              return Object.values(stats)
+                .map((e) => ({ login: e.login, count: e.count, projects: e.groups.size, first: e.first, last: e.last }))
+                .sort((a, b) => b.count - a.count || a.login.localeCompare(b.login));
+            };
+            // A mentor audit = auditor is on the roster AND the audit fell inside one of their mentor periods.
+            const wasMentor = (r: Row) => {
+              const t = Date.parse(r.auditedAt || r.createdAt);
+              return MENTOR_ROSTER.some((m) =>
+                m.login.toLowerCase() === r.auditorLogin.toLowerCase() &&
+                (!m.from || t >= Date.parse(m.from)) &&
+                (!m.to || t <= Date.parse(m.to) + 86400000)
+              );
+            };
+            setAllAuditors(summarize(rows));
+            setMentors(summarize(rows.filter(wasMentor)));
           } catch (auditErr) {
             if (auditErr instanceof AuthExpiredError) throw auditErr;
             console.error('Failed to load mentor audits:', auditErr);
@@ -747,24 +751,36 @@ export default function HomePage() {
             <DynamicGraph GetChart="HeatMap" gameData={gameData} />
           </Suspense>
         ))}
-        {win('mentors', (
-          <div className={styles.card}>
-            <div className={styles.cardBody}>
-              {mentors.length === 0 ? (
-                <p>No audits found.</p>
-              ) : (
-                <ol style={{ paddingLeft: '1.5em' }}>
-                  {mentors.map((m, i) => (
-                    <li key={m.login}>
-                      <strong>{m.login}</strong>{i === 0 ? ' (mentor)' : ''} - {m.count} audit{m.count === 1 ? '' : 's'}, {m.projects} project{m.projects === 1 ? '' : 's'}{m.mentorOf > 0 ? `, mentor of ${m.mentorOf}` : ''}
-                      <br /><small>active {monthYear(m.first)} - {monthYear(m.last)}</small>
-                    </li>
-                  ))}
-                </ol>
-              )}
+        {win('mentors', (() => {
+          const rosterSet = MENTOR_ROSTER.length > 0;
+          const tab = rosterSet ? auditTab : 'all';
+          const list = tab === 'mentors' ? mentors : allAuditors;
+          const total = list.reduce((n, m) => n + m.count, 0);
+          return (
+            <div className={styles.card}>
+              <div className={styles.cardBody}>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                  <button className={styles.iconButton} style={{ width: 'auto', height: 24, translate: 'none', fontSize: 12, backgroundColor: tab === 'mentors' ? '#888b8d' : '' }} disabled={!rosterSet} onClick={() => setAuditTab('mentors')}>Mentor audits</button>
+                  <button className={styles.iconButton} style={{ width: 'auto', height: 24, translate: 'none', fontSize: 12, backgroundColor: tab === 'all' ? '#888b8d' : '' }} onClick={() => setAuditTab('all')}>All auditors</button>
+                </div>
+                {!rosterSet && <p><small>No mentor roster yet. Add mentor auditors and their dates to config/mentors.ts for the mentor view; showing everyone who audited you.</small></p>}
+                <p><small>{list.length} auditor{list.length === 1 ? '' : 's'}, {total} completed audit{total === 1 ? '' : 's'} on you</small></p>
+                {list.length === 0 ? (
+                  <p>No audits found.</p>
+                ) : (
+                  <ol style={{ paddingLeft: '2em' }}>
+                    {list.map((m) => (
+                      <li key={m.login}>
+                        <strong>{m.login}</strong> - {m.count} audit{m.count === 1 ? '' : 's'}, {m.projects} project{m.projects === 1 ? '' : 's'}
+                        <br /><small>{monthYear(m.first)} - {monthYear(m.last)}</small>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })())}
         {win('mines', (
           <Suspense fallback={<div>Loading Minesweeper...</div>}>
             <DynamicMinesweeper />
