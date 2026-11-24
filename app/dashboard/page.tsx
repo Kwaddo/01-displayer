@@ -74,6 +74,7 @@ const auditQuery = `query Audits($uid: Int!) {
     group {
       id
       eventId
+      event { path }
     }
   }
 }`;
@@ -92,8 +93,10 @@ const modulePathsQuery = `query Modules($uid: Int!) {
   }
 }`;
 
-const cohortQuery = `query Cohorts($ids: [Int!]!, $modulePaths: [String!]!) {
-  event_user(where: {userId: {_in: $ids}, event: {path: {_in: $modulePaths}}}) {
+// Root piscine + module events a user belongs to. Sharing one with the audited person = same cohort
+// (this also catches drop-outs, who keep their piscine enrollment after leaving the module).
+const cohortQuery = `query Cohorts($ids: [Int!]!) {
+  event_user(where: {userId: {_in: $ids}, event: {path: {_regex: "^/[^/]+/[^/]+-(module|piscine)$"}}}) {
     userId
     eventId
   }
@@ -311,7 +314,7 @@ export default function HomePage() {
           setGameData(gData);
           try {
             const auditData = await fetchGraphQL(auditQuery, { uid: loggedInUser.id });
-            type Row = { auditorId: number; auditorLogin: string; auditedAt: string | null; createdAt: string; group: { id: number; eventId: number } };
+            type Row = { auditorId: number; auditorLogin: string; auditedAt: string | null; createdAt: string; group: { id: number; eventId: number; event: { path: string } } };
             const rows: Row[] = auditData?.audit || [];
             const summarize = (list: Row[]): MentorEntry[] => {
               const stats: Record<number, MentorEntry & { groups: Set<number> }> = {};
@@ -327,19 +330,22 @@ export default function HomePage() {
                 .map((e) => ({ login: e.login, count: e.count, projects: e.groups.size, first: e.first, last: e.last }))
                 .sort((a, b) => b.count - a.count || a.login.localeCompare(b.login));
             };
-            // Only people on the roster can be mentor audits. Tech mentors always count; a dated entry
-            // counts inside its period; an undated student mentor counts only when they are NOT in the
-            // audited person's cohort (a same-cohort auditor was a peer, not yet a mentor).
+            // Only people on the roster can be mentor audits, and only on module projects (piscine audits
+            // are always peer audits). Dated entries count inside their periods; tech mentors always count;
+            // an undated student mentor counts only when they are NOT in the audited person's cohort.
             const rosterLogins = new Set(MENTOR_ROSTER.map((m) => m.login.toLowerCase()));
             const rosterIds = Array.from(new Set(rows.filter((r) => rosterLogins.has(r.auditorLogin.toLowerCase())).map((r) => r.auditorId)));
             const cohorts: Record<number, Set<number>> = {};
             if (rosterIds.length > 0) {
-              const eu = await fetchGraphQL(cohortQuery, { ids: rosterIds, modulePaths });
+              const eu = await fetchGraphQL(cohortQuery, { ids: [...rosterIds, loggedInUser.id] });
               (eu?.event_user || []).forEach((e: { userId: number; eventId: number }) => {
                 (cohorts[e.userId] || (cohorts[e.userId] = new Set())).add(e.eventId);
               });
             }
+            const myCohorts = cohorts[loggedInUser.id] || new Set<number>();
+            const sameCohort = (auditorId: number) => Array.from(cohorts[auditorId] || []).some((e) => myCohorts.has(e));
             const wasMentor = (r: Row) => {
+              if (r.group.event?.path?.includes('piscine')) return false;
               const t = Date.parse(r.auditedAt || r.createdAt);
               return MENTOR_ROSTER.some((m) => {
                 if (m.login.toLowerCase() !== r.auditorLogin.toLowerCase()) return false;
@@ -347,7 +353,7 @@ export default function HomePage() {
                   return (!m.from || t >= Date.parse(m.from)) && (!m.to || t <= Date.parse(m.to) + 86400000);
                 }
                 if (m.kind === 'tech') return true;
-                return !cohorts[r.auditorId]?.has(r.group.eventId);
+                return !sameCohort(r.auditorId);
               });
             };
             setAllAuditors(summarize(rows));
