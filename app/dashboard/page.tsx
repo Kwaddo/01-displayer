@@ -377,8 +377,11 @@ export default function HomePage() {
               });
             }
             const myCohorts = cohorts[loggedInUser.id] || new Set<number>();
-            // Current "Audit Mentor" avatar holders, and since when (avatar file's Last-Modified).
+            // Avatars are uploaded by staff (only ~40 accounts have one), and mentors get one when they
+            // start: either the shared "Audit Mentor" image or a personal photo. The avatar file's
+            // Last-Modified date marks the start of that mentoring.
             const mentorSince: Record<number, number> = {};
+            const avatarKind: Record<number, string> = {};
             try {
               const urls = Array.from(new Set(rows.map((r) => r.auditor?.avatarUrl).filter((u): u is string => !!u)));
               if (urls.length > 0) {
@@ -390,7 +393,10 @@ export default function HomePage() {
                 const { avatars } = await res.json();
                 rows.forEach((r) => {
                   const a = r.auditor?.avatarUrl ? avatars?.[r.auditor.avatarUrl] : null;
-                  if (a?.mentor && a.since) mentorSince[r.auditorId] = Date.parse(a.since);
+                  if (a?.since) {
+                    mentorSince[r.auditorId] = Date.parse(a.since);
+                    avatarKind[r.auditorId] = `${a.mentor ? 'Audit Mentor avatar' : 'staff-set avatar'} since ${a.since.slice(0, 10)}`;
+                  }
                 });
               }
             } catch (avatarErr) {
@@ -413,7 +419,7 @@ export default function HomePage() {
               const techPeriods = periods.filter((p) => p.userId === r.auditorId && p.label === 'Tech Team');
               const hit = techPeriods.find((p) => t >= dayStart(p.since) && (!p.endedAt || t <= Date.parse(p.endedAt)));
               if (hit) return hit.endedAt ? 'past Tech Team' : 'Tech Team';
-              if (!isPiscine && mentorSince[r.auditorId] !== undefined && t >= mentorSince[r.auditorId]) return 'Audit Mentor avatar';
+              if (!isPiscine && mentorSince[r.auditorId] !== undefined && t >= mentorSince[r.auditorId]) return avatarKind[r.auditorId];
               if (techPeriods.length > 0 || mentorSince[r.auditorId] !== undefined) return null;
               const entry = MENTOR_ROSTER.find((m) => m.login.toLowerCase() === login);
               if (!entry) return null;

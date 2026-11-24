@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createHash } from 'node:crypto';
 
-// The platform marks student audit mentors by setting their profile picture to a shared
-// "Audit Mentor" image. Its file's Last-Modified header is when that avatar was applied,
-// which is used as the start of the current mentor stint.
+// Avatars are set by staff, and mentors get one when they start: the shared "Audit Mentor" image
+// or a personal photo. Returns, per avatar URL, whether it is the Audit Mentor image and the
+// file's Last-Modified date (when it was applied), used as the start of that mentoring.
 const AUDIT_MENTOR_SHA256 = '77ed5b3109c46766e8a63e2b35c9ddd015ebde3f30cce50b2eb1c83e097c0561';
 const ALLOWED_PREFIX = 'https://learn.reboot01.com/git/avatars/';
 const TTL_MS = 6 * 60 * 60 * 1000;
