@@ -11,7 +11,14 @@ export interface MentorPeriod {
   to?: string;
 }
 
+// NOTE: entries without `from` count EVERY audit by that login, including audits made back when
+// they were still an ordinary peer. Add a `from` (and `to`) date for each to make this accurate.
 export const MENTOR_ROSTER: MentorPeriod[] = [
-  // { login: 'aaljamal', from: '2025-06-01' },
-  // { login: 'haalbasara', from: '2025-01-10', to: '2025-12-20' },
+  { login: 'saysharaf' },
+  { login: 'mohamedahmed1' },
+  { login: 'haalbasara' },
+  { login: 'haaljafen' },
+  { login: 'falmoath' },
+  { login: 'fatali' },
+  { login: 'dalabbas' },
 ];
