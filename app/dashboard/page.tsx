@@ -327,29 +327,27 @@ export default function HomePage() {
                 .map((e) => ({ login: e.login, count: e.count, projects: e.groups.size, first: e.first, last: e.last }))
                 .sort((a, b) => b.count - a.count || a.login.localeCompare(b.login));
             };
-            // Cohorts (module events) each auditor is enrolled in. A same-cohort auditor was a peer,
-            // so without an explicit mentor start date their audits are not counted as mentor audits.
-            const rosterLogins = new Set(MENTOR_ROSTER.map((m) => m.login.toLowerCase()));
-            const rosterIds = Array.from(new Set(rows.filter((r) => rosterLogins.has(r.auditorLogin.toLowerCase())).map((r) => r.auditorId)));
+            // Cohorts (module events) each auditor is enrolled in. An auditor outside the audited
+            // person's cohort is treated as a mentor auditor; a same-cohort auditor was a peer unless the
+            // roster says otherwise (tech mentor, or an audit inside a dated mentor period).
+            const auditorIds = Array.from(new Set(rows.map((r) => r.auditorId)));
             const cohorts: Record<number, Set<number>> = {};
-            if (rosterIds.length > 0) {
-              const eu = await fetchGraphQL(cohortQuery, { ids: rosterIds, modulePaths });
+            if (auditorIds.length > 0) {
+              const eu = await fetchGraphQL(cohortQuery, { ids: auditorIds, modulePaths });
               (eu?.event_user || []).forEach((e: { userId: number; eventId: number }) => {
                 (cohorts[e.userId] || (cohorts[e.userId] = new Set())).add(e.eventId);
               });
             }
-            // A mentor audit = auditor is on the roster AND either the audit falls inside a dated mentor
-            // period, or (undated entry) the auditor is not in the audited person's cohort.
             const wasMentor = (r: Row) => {
               const t = Date.parse(r.auditedAt || r.createdAt);
-              return MENTOR_ROSTER.some((m) => {
+              const rostered = MENTOR_ROSTER.some((m) => {
                 if (m.login.toLowerCase() !== r.auditorLogin.toLowerCase()) return false;
                 if (m.from || m.to) {
                   return (!m.from || t >= Date.parse(m.from)) && (!m.to || t <= Date.parse(m.to) + 86400000);
                 }
-                if (m.kind === 'tech') return true;
-                return !cohorts[r.auditorId]?.has(r.group.eventId);
+                return m.kind === 'tech';
               });
+              return rostered || !cohorts[r.auditorId]?.has(r.group.eventId);
             };
             setAllAuditors(summarize(rows));
             setMentors(summarize(rows.filter(wasMentor)));
@@ -775,18 +773,16 @@ export default function HomePage() {
           </Suspense>
         ))}
         {win('mentors', (() => {
-          const rosterSet = MENTOR_ROSTER.length > 0;
-          const tab = rosterSet ? auditTab : 'all';
+          const tab = auditTab;
           const list = tab === 'mentors' ? mentors : allAuditors;
           const total = list.reduce((n, m) => n + m.count, 0);
           return (
             <div className={styles.card}>
               <div className={styles.cardBody}>
                 <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-                  <button className={styles.iconButton} style={{ width: 'auto', height: 24, translate: 'none', fontSize: 12, backgroundColor: tab === 'mentors' ? '#888b8d' : '' }} disabled={!rosterSet} onClick={() => setAuditTab('mentors')}>Mentor audits</button>
+                  <button className={styles.iconButton} style={{ width: 'auto', height: 24, translate: 'none', fontSize: 12, backgroundColor: tab === 'mentors' ? '#888b8d' : '' }} onClick={() => setAuditTab('mentors')}>Mentor audits</button>
                   <button className={styles.iconButton} style={{ width: 'auto', height: 24, translate: 'none', fontSize: 12, backgroundColor: tab === 'all' ? '#888b8d' : '' }} onClick={() => setAuditTab('all')}>All auditors</button>
                 </div>
-                {!rosterSet && <p><small>No mentor roster yet. Add mentor auditors and their dates to config/mentors.ts for the mentor view; showing everyone who audited you.</small></p>}
                 <p><small>{list.length} auditor{list.length === 1 ? '' : 's'}, {total} completed audit{total === 1 ? '' : 's'} on you</small></p>
                 {list.length === 0 ? (
                   <p>No audits found.</p>
