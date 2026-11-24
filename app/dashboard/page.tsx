@@ -7,14 +7,16 @@ const DynamicGraph = dynamic(() => import('@/components/graph'), { ssr: false })
 const DynamicMinesweeper = dynamic(() => import('@/components/minesweeper'), { ssr: false });
 const DynamicSpaceInvaders = dynamic(() => import('@/components/invaders'), { ssr: false });
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { fetchGraphQL } from '@/utils/info';
+import { fetchGraphQL, AuthExpiredError } from '@/utils/info';
 import { logout } from '@/utils/user';
 import styles from '@/styles/home.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUser, faSignOut, faBarChart, faChartLine, faTrophy, faGamepad, faNoteSticky, faPalette, faGun } from '@fortawesome/free-solid-svg-icons';
+import { faUser, faSignOut, faBarChart, faChartLine, faTrophy, faGamepad, faNoteSticky, faPalette, faGun, faMedal } from '@fortawesome/free-solid-svg-icons';
 import Windows98Splash from '@/components/splash';
+import Window, { WinState } from '@/components/window';
+import winStyles from '@/styles/window.module.css';
 
 interface Group {
   campus: string;
@@ -30,6 +32,7 @@ interface Group {
 }
 
 interface User {
+  id: number;
   auditRatio: number;
   email: string;
   firstName: string;
@@ -47,14 +50,50 @@ interface XpData {
   count: number;
 }
 
+interface MentorEntry {
+  login: string;
+  count: number;
+  projects: number;
+  mentorOf: number;
+  first: string;
+  last: string;
+}
+
+// Completed audits (succeeded/failed) done BY others ON groups the user belongs to,
+// across every event/cohort. Cancelled/expired/reassigned audits are excluded.
+const auditQuery = `query Audits($uid: Int!) {
+  audit(where: {
+    closureType: {_in: [succeeded, failed]},
+    auditorId: {_neq: $uid},
+    group: {_or: [{captainId: {_eq: $uid}}, {members: {userId: {_eq: $uid}}}]}
+  }) {
+    auditorId
+    auditorLogin
+    auditedAt
+    createdAt
+    group {
+      id
+    }
+  }
+}`;
+
 interface GameData {
   name: string;
   level: number;
   attempts: number;
 }
 
-const query = `query User {
+// Step 1: who am I, and which module event paths (e.g. /campus/xx-module) am I enrolled in.
+const userIdQuery = `query Me { user { id } }`;
+const modulePathsQuery = `query Modules($uid: Int!) {
+  event_user(where: {userId: {_eq: $uid}, event: {path: {_regex: "^/[^/]+/[^/]+-module$"}}}) {
+    event { path }
+  }
+}`;
+
+const query = `query User($moduleLike: String!, $modulePaths: [String!]!) {
   user {
+      id
       auditRatio
       email
       firstName
@@ -74,18 +113,18 @@ const query = `query User {
           status
           updatedAt
       }
-      TransactionsFiltered1: transactions(where: {type: {_eq: "xp"}, path: { _like: "%bh-module%", _nregex: "^.*(piscine-js/|piscine-rust/|piscine-ui/|piscine-ux/).*$" }}) {
+      TransactionsFiltered1: transactions(where: {type: {_eq: "xp"}, path: { _like: $moduleLike, _nregex: "^.*(piscine-js/|piscine-rust/|piscine-ui/|piscine-ux/).*$" }}) {
           amount
           type
       		path
       }
-      TransactionsFiltered2: transactions(where: {type: {_eq: "level"},  path: { _like: "%bh-module%", _nregex: "^.*(piscine-js/|piscine-rust/|piscine-ui/|piscine-ux/).*$" }}, order_by: {amount: desc}, limit: 1) {
+      TransactionsFiltered2: transactions(where: {type: {_eq: "level"},  path: { _like: $moduleLike, _nregex: "^.*(piscine-js/|piscine-rust/|piscine-ui/|piscine-ux/).*$" }}, order_by: {amount: desc}, limit: 1) {
           amount
          type
          path
       }
   }
-  event_user(where: { eventId: { _in: [72, 20, 250] } }) {
+  event_user(where: { event: { path: { _in: $modulePaths } } }) {
       level
       userId
       userLogin
@@ -107,6 +146,58 @@ const query = `query User {
   }
 }`;
 
+const monthYear = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+
+const WIN_IDS = ['info', 'notes', 'audit', 'levels', 'game', 'mentors', 'mines', 'color', 'invaders'] as const;
+type WinId = typeof WIN_IDS[number];
+const WIN_TITLES: Record<WinId, string> = {
+  info: 'USER INFORMATION',
+  notes: 'NOTEBOOK',
+  audit: 'AUDIT RATIO',
+  levels: 'USER LEVELS',
+  game: 'GAME INFO',
+  mentors: 'MENTOR LEADERBOARD',
+  mines: 'MINESWEEPER',
+  color: 'COLOR',
+  invaders: 'SPACE INVADERS',
+};
+const WIN_SIZE: Record<WinId, [number, number]> = {
+  info: [360, 300], notes: [340, 300], audit: [400, 340], levels: [400, 340], game: [440, 340],
+  mentors: [380, 340], mines: [380, 440], color: [270, 130], invaders: [680, 580],
+};
+const WIN_OPEN: Record<WinId, boolean> = {
+  info: true, notes: true, audit: true, levels: true, game: true, mentors: true, mines: false, color: false, invaders: false,
+};
+const TASKBAR_H = 46;
+const PAD = 12;
+
+// Tile the initially-open windows in rows that fit the desktop; stack the rest in a cascade.
+function layoutAll(dw: number, dh: number): Record<WinId, WinState> {
+  const out = {} as Record<WinId, WinState>;
+  const narrow = dw < 700;
+  let x = PAD, y = PAD, rowH = 0, z = 10;
+  WIN_IDS.forEach((id, i) => {
+    const w = Math.min(WIN_SIZE[id][0], dw - PAD * 2);
+    const h = Math.min(WIN_SIZE[id][1], dh - PAD * 2);
+    let px: number, py: number;
+    if (narrow || !WIN_OPEN[id]) {
+      px = Math.min(PAD + i * 20, Math.max(0, dw - w));
+      py = Math.min(PAD + i * 20, Math.max(0, dh - h));
+    } else {
+      if (x + w > dw - PAD && x > PAD) { x = PAD; y += rowH + PAD; rowH = 0; }
+      px = x; py = y;
+      if (py + h > dh) { // out of vertical room: overlap in a cascade instead of hiding
+        px = Math.min(PAD + i * 24, Math.max(0, dw - w));
+        py = Math.min(PAD + i * 24, Math.max(0, dh - h));
+      }
+      x += w + PAD;
+      rowH = Math.max(rowH, h);
+    }
+    out[id] = { x: px, y: py, w: narrow ? dw - PAD * 2 : w, h, z: z++, open: WIN_OPEN[id], max: false };
+  });
+  return out;
+}
+
 export default function HomePage() {
   const [userData, setUserData] = useState<User | null>(null);
   const [xpDistribution, setXpDistribution] = useState<XpData[]>([]);
@@ -118,6 +209,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
+  const [mentors, setMentors] = useState<MentorEntry[]>([]);
 
   useEffect(() => {
     setIsClient(true);
@@ -162,7 +254,16 @@ export default function HomePage() {
           router.replace('/signin');
           return;
         }
-        const data = await fetchGraphQL(query);
+        const me = await fetchGraphQL(userIdQuery);
+        const uid = me?.user?.[0]?.id;
+        if (!uid) throw new Error('User data not found.');
+        const mods = await fetchGraphQL(modulePathsQuery, { uid });
+        const modulePaths: string[] = Array.from(
+          new Set<string>((mods?.event_user || []).map((e: { event: { path: string } }) => e.event.path))
+        );
+        if (modulePaths.length === 0) throw new Error('No module enrollment found.');
+        const moduleLike = `%${modulePaths[0].split('/').pop()}%`;
+        const data = await fetchGraphQL(query, { moduleLike, modulePaths });
         if (data?.user && data.user.length > 0) {
           const loggedInUser = data.user[0] as User;
           loggedInUser.auditRatio = parseFloat(loggedInUser.auditRatio.toFixed(1));
@@ -198,11 +299,47 @@ export default function HomePage() {
             attempts: result.attempts,
           })) || [];
           setGameData(gData);
+          try {
+            const auditData = await fetchGraphQL(auditQuery, { uid: loggedInUser.id });
+            type Row = { auditorId: number; auditorLogin: string; auditedAt: string | null; createdAt: string; group: { id: number } };
+            const rows: Row[] = auditData?.audit || [];
+            // per project: how many audits each auditor did -> the top one is that project's mentor
+            const perGroup: Record<number, Record<number, number>> = {};
+            const stats: Record<number, MentorEntry & { groups: Set<number> }> = {};
+            rows.forEach((r) => {
+              const when = r.auditedAt || r.createdAt;
+              const e = stats[r.auditorId] || (stats[r.auditorId] = { login: r.auditorLogin, count: 0, projects: 0, mentorOf: 0, first: when, last: when, groups: new Set() });
+              e.count++;
+              e.groups.add(r.group.id);
+              if (when < e.first) e.first = when;
+              if (when > e.last) e.last = when;
+              const g = perGroup[r.group.id] || (perGroup[r.group.id] = {});
+              g[r.auditorId] = (g[r.auditorId] || 0) + 1;
+            });
+            Object.values(perGroup).forEach((g) => {
+              const top = Object.entries(g).sort((a, b) => b[1] - a[1])[0];
+              if (top && g[Number(top[0])] > 1) stats[Number(top[0])].mentorOf++;
+            });
+            setMentors(
+              Object.values(stats)
+                .map((e) => ({ login: e.login, count: e.count, projects: e.groups.size, mentorOf: e.mentorOf, first: e.first, last: e.last }))
+                .sort((a, b) => b.mentorOf - a.mentorOf || b.count - a.count)
+                .slice(0, 10)
+            );
+          } catch (auditErr) {
+            if (auditErr instanceof AuthExpiredError) throw auditErr;
+            console.error('Failed to load mentor audits:', auditErr);
+          }
         } else {
           throw new Error('User data not found.');
         }
       } catch (err) {
         console.error('Failed to fetch data:', err);
+        if (err instanceof AuthExpiredError) {
+          logout();
+          router.replace('/signin');
+          return;
+        }
         setError('Failed to load user data.');
       } finally {
         setLoading(false);
@@ -210,27 +347,6 @@ export default function HomePage() {
     }; fetchData();
   }, [router, isClient]);
 
-  const [fullscreenState, setFullscreenState] = useState({
-    container1: false,
-    container2: false,
-    chartContainer1: false,
-    chartContainer2: false,
-    chartContainer3: false,
-    container3: false,
-    container4: false,
-    container5: false,
-  });
-
-  const [visibleState, setVisibleState] = useState({
-    container1: true,
-    container2: true,
-    chartContainer1: true,
-    chartContainer2: true,
-    chartContainer3: true,
-    container3: false,
-    container4: false,
-    container5: false,
-  });
   const colorMap = useMemo(() => ({
     1: 1,
     2: 2,
@@ -238,63 +354,60 @@ export default function HomePage() {
     4: 4,
     5: 5,
   }), []);
-  const [prevVisibilityState, setPrevVisibilityState] = useState<Record<string, boolean>>({});
+  const [desk, setDesk] = useState({ w: 1200, h: 700 });
+  const [wins, setWins] = useState<Record<WinId, WinState> | null>(null);
+  const [activeId, setActiveId] = useState<WinId | null>(null);
+  const zTop = useRef(10);
 
-  const toggleFullscreen = (container: string) => {
-    setFullscreenState(prevState => {
-      const newState = { ...prevState };
-      if (!prevState[container as keyof typeof prevState]) {
-        Object.keys(prevState).forEach(key => {
-          if (key !== container) {
-            newState[key as keyof typeof prevState] = false;
-          }
+  useEffect(() => {
+    if (!isClient) return;
+    const measure = () => ({ w: window.innerWidth, h: Math.max(200, window.innerHeight - TASKBAR_H) });
+    const d = measure();
+    setDesk(d);
+    setWins(layoutAll(d.w, d.h));
+    const onResize = () => {
+      const nd = measure();
+      setDesk(nd);
+      // keep every window reachable and inside the desktop after a resize / rotate
+      setWins(prev => {
+        if (!prev) return prev;
+        const next = { ...prev };
+        WIN_IDS.forEach(id => {
+          const w = next[id];
+          const width = Math.min(w.w, nd.w);
+          const height = Math.min(w.h, nd.h);
+          next[id] = {
+            ...w,
+            w: width,
+            h: height,
+            x: Math.min(Math.max(w.x, 0), Math.max(0, nd.w - width)),
+            y: Math.min(Math.max(w.y, 0), Math.max(0, nd.h - height)),
+          };
         });
-      }
-      newState[container as keyof typeof prevState] = !prevState[container as keyof typeof prevState];
-      return newState;
-    });
-    setVisibleState(prevState => {
-      const newVisibleState = { ...prevState };
-      if (!fullscreenState[container as keyof typeof prevState]) {
-        setPrevVisibilityState(prevState);
-        Object.keys(prevState).forEach(key => {
-          if (key !== container) {
-            newVisibleState[key as keyof typeof prevState] = false;
-          }
-        });
-      } else {
-        Object.keys(prevState).forEach(key => {
-          if (key !== container) {
-            newVisibleState[key as keyof typeof prevState] = prevVisibilityState[key] ?? true;
-          }
-        });
-      }
-      return newVisibleState;
-    });
-  };
+        return next;
+      });
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [isClient]);
 
-  const toggleVisibility = (containerName: string) => {
-    setVisibleState((prevState) => {
-      const newVisibleState = { ...prevState };
-      newVisibleState[containerName as keyof typeof newVisibleState] = !prevState[containerName as keyof typeof prevState];
-      const fullscreenContainer = Object.keys(fullscreenState).find(
-        (key) => fullscreenState[key as keyof typeof fullscreenState]
-      );
+  const focusWin = useCallback((id: WinId) => {
+    setActiveId(id);
+    setWins(prev => (prev ? { ...prev, [id]: { ...prev[id], z: ++zTop.current } } : prev));
+  }, []);
 
-      if (fullscreenContainer) {
-        setFullscreenState((prevFullscreenState) => ({
-          ...prevFullscreenState,
-          [fullscreenContainer]: false,
-        }));
-        Object.keys(prevVisibilityState).forEach((key) => {
-          if (key !== fullscreenContainer) {
-            newVisibleState[key as keyof typeof newVisibleState] = prevVisibilityState[key];
-          }
-        });
-      }
+  const patchWin = useCallback((id: WinId, patch: Partial<WinState>) => {
+    setWins(prev => (prev ? { ...prev, [id]: { ...prev[id], ...patch } } : prev));
+  }, []);
 
-      return newVisibleState;
-    });
+  const toggleWin = (id: WinId) => {
+    if (!wins) return;
+    if (wins[id].open) {
+      patchWin(id, { open: false });
+    } else {
+      patchWin(id, { open: true, z: ++zTop.current });
+      setActiveId(id);
+    }
   };
 
   useEffect(() => {
@@ -306,7 +419,7 @@ export default function HomePage() {
           const response = await fetch('/api/insertUser', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, token: userToken }),
+            body: JSON.stringify({ userId }),
           });
 
           const data = await response.json();
@@ -562,274 +675,137 @@ export default function HomePage() {
 
   if (loading) return <p className={styles.loading}>Loading...</p>;
   if (error) return <p className={styles.error}>{error}</p>;
+  if (!wins) return null;
+
+  const win = (id: WinId, content: React.ReactNode, minW?: number, minH?: number) => (
+    <Window
+      key={id}
+      title={WIN_TITLES[id]}
+      state={wins[id]}
+      active={activeId === id}
+      desktop={desk}
+      minW={minW}
+      minH={minH}
+      onChange={(patch) => patchWin(id, patch)}
+      onFocus={() => { if (activeId !== id) focusWin(id); }}
+      onClose={() => toggleWin(id)}
+    >
+      {content}
+    </Window>
+  );
+
+  const taskButtons: { id: WinId; icon: typeof faUser; hideOnTablet?: boolean }[] = [
+    { id: 'info', icon: faUser },
+    { id: 'notes', icon: faNoteSticky },
+    { id: 'audit', icon: faBarChart },
+    { id: 'levels', icon: faChartLine },
+    { id: 'game', icon: faTrophy },
+    { id: 'mentors', icon: faMedal },
+    { id: 'mines', icon: faGamepad },
+    { id: 'color', icon: faPalette },
+    { id: 'invaders', icon: faGun, hideOnTablet: true },
+  ];
 
   return (
     <>
       {showSplash && <Windows98Splash />}
-      <div className={styles.acontainers}>
-        <div className={styles.chartcontainers}>
-          {visibleState.container1 && (
-            <div className={`${styles.container} ${fullscreenState.container1 ? styles.fullscreen : ''}`}>
-              <div className={`${styles.bar}`}>
-                <p>USER INFORMATION</p>
-                <div className={styles.barIcons}>
-                  <button onClick={() => toggleFullscreen('container1')} className={styles.svgButton} aria-label="Fullscreen Button">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 24 24" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                      <path d="M3 3H9V9H3zM3 15H9V21H3zM15 3H21V9H15zM15 15H21V21H15z" />
-                    </svg>
-                  </button>
-                  <button onClick={() => toggleVisibility('container1')} className={styles.svgButton} aria-label="SVG Button">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                      <path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              <h1 className={styles.title}>Hi {userData?.login}!</h1>
-              <div className={styles.blackbar}></div>
-              <div className={styles.card}>
-                <div className={styles.cardBody}>
-                  <p><strong>Username:</strong> {userData?.login}</p>
-                  <p><strong>Name:</strong> {capitalizeWords(userData?.firstName || '') + ' ' + capitalizeWords(userData?.lastName || '')}</p>
-                  <p><strong>Email:</strong> {userData?.email}</p>
-                  <p><strong>Audit Ratio:</strong> {userData?.auditRatio}</p>
-                  <p><strong>Total XP:</strong> {xpAmount / 1000} Kilobytes</p>
-                  <p><strong>Module Level:</strong> {levelAmount} </p>
-                  <p><strong>Last Completed:</strong> {lastProject} </p>
-                  {/* Logout Button */}
-                </div>
-              </div>
-            </div>
-          )}
-          {visibleState.container2 && (
-            <div className={`${styles.container} ${fullscreenState.container2 ? styles.fullscreen : ''}`}>
-              <div className={styles.bar}>
-                <p>NOTEBOOK</p>
-                <div className={styles.barIcons}>
-                  <button onClick={() => toggleFullscreen('container2')} className={styles.svgButton} aria-label="Fullscreen Button">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 24 24" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                      <path d="M3 3H9V9H3zM3 15H9V21H3zM15 3H21V9H15zM15 15H21V21H15z" />
-                    </svg>
-                  </button>
-                  <button onClick={() => toggleVisibility('container2')} className={styles.svgButton} aria-label="SVG Button">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                      <path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              <textarea
-                className={styles.textarea}
-                value={notebookContent}
-                onChange={handleChange}
-                placeholder="Write your notes here..."
-              />
-            </div>
-          )}
-        </div>
-        <div className={styles.chartcontainers}>
-          {/* Audit Ratio Bar Chart */}
-          {visibleState.chartContainer1 && (
-            <div className={`${styles.chartContainer} ${fullscreenState.chartContainer1 ? styles.fullscreen : ''}`}>
-              <div className={styles.bar}>
-                <p>AUDIT RATIO</p>
-                <div className={styles.barIcons}>
-                  <button onClick={() => toggleFullscreen('chartContainer1')} className={styles.svgButton} aria-label="Fullscreen Button">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 24 24" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                      <path d="M3 3H9V9H3zM3 15H9V21H3zM15 3H21V9H15zM15 15H21V21H15z" />
-                    </svg>
-                  </button>
-                  <button onClick={() => toggleVisibility('chartContainer1')} className={styles.svgButton} aria-label="SVG Button">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                      <path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              {userData && (
-                <Suspense fallback={<div>Loading chart...</div>}>
-                  <DynamicGraph GetChart="BarChart" userData={userData} />
-                </Suspense>
-              )}
-            </div>
-          )}
-
-          {/* XP Distribution Chart */}
-          {visibleState.chartContainer2 && (
-            <div className={`${styles.chartContainer} ${fullscreenState.chartContainer2 ? styles.fullscreen : ''}`} >
-              <div className={styles.bar}>
-                <p>USER LEVELS ({totalUsers} USERS)</p>
-                <div className={styles.barIcons}>
-                  <button onClick={() => toggleFullscreen('chartContainer2')} className={styles.svgButton} aria-label="Fullscreen Button">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 24 24" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                      <path d="M3 3H9V9H3zM3 15H9V21H3zM15 3H21V9H15zM15 15H21V21H15z" />
-                    </svg>
-                  </button>
-                  <button onClick={() => toggleVisibility('chartContainer2')} className={styles.svgButton} aria-label="SVG Button">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                      <path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              {xpDistribution && levelAmount && (
-                <Suspense fallback={<div>Loading chart...</div>}>
-                  <DynamicGraph GetChart="XpChart" xpDistribution={xpDistribution} levelAmount={levelAmount} />
-                </Suspense>
-              )}
-            </div>
-          )}
-        </div>
-        <div className={styles.chartcontainers}>
-          {visibleState.chartContainer3 && (
-            <div className={`${styles.chartContainer} ${fullscreenState.chartContainer3 ? styles.fullscreen : ''}`} >
-              <div className={styles.bar}>
-                <p>GAME INFO</p>
-                <div className={styles.barIcons}>
-                  <button onClick={() => toggleFullscreen('chartContainer3')} className={styles.svgButton} aria-label="Fullscreen Button">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 24 24" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                      <path d="M3 3H9V9H3zM3 15H9V21H3zM15 3H21V9H15zM15 15H21V21H15z" />
-                    </svg>
-                  </button>
-                  <button onClick={() => toggleVisibility('chartContainer3')} className={styles.svgButton} aria-label="SVG Button">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                      <path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              {gameData && (
-                <Suspense fallback={<div>Loading chart...</div>}>
-                  <DynamicGraph GetChart="HeatMap" gameData={gameData} />
-                </Suspense>
-              )}
-            </div>
-          )}
-        </div>
-        <div className={styles.chartcontainers}>
-          {visibleState.container3 && (
-            <div className={`${styles.container} ${fullscreenState.container3 ? styles.fullscreen : ''}`}>
-              <div className={styles.bar}>
-                <p>MINESWEEPER</p>
-                <div className={styles.barIcons}>
-                  <button onClick={() => toggleFullscreen('container3')} className={styles.svgButton} aria-label="Fullscreen Button">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 24 24" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                      <path d="M3 3H9V9H3zM3 15H9V21H3zM15 3H21V9H15zM15 15H21V21H15z" />
-                    </svg>
-                  </button>
-                  <button onClick={() => toggleVisibility('container3')} className={styles.svgButton} aria-label="SVG Button">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                      <path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              <Suspense fallback={<div>Loading Minesweeper...</div>}>
-                <DynamicMinesweeper />
-              </Suspense>
-            </div>
-          )}
-        </div>
-        <div className={styles.windowbar}>
-          <div className={styles.buttonContainer}>
-            <button
-              style={{ backgroundColor: visibleState.container1 ? '#888b8d' : '' }}
-              className={styles.iconButton}
-              onClick={() => toggleVisibility('container1')}>
-              <FontAwesomeIcon icon={faUser} />
-            </button>
-            <button
-              style={{ backgroundColor: visibleState.container2 ? '#888b8d' : '' }}
-              className={styles.iconButton}
-              onClick={() => toggleVisibility('container2')}>
-              <FontAwesomeIcon icon={faNoteSticky} />
-            </button>
-            <button
-              style={{ backgroundColor: visibleState.chartContainer1 ? '#888b8d' : '' }}
-              className={styles.iconButton}
-              onClick={() => toggleVisibility('chartContainer1')}>
-              <FontAwesomeIcon icon={faBarChart} />
-            </button>
-            <button
-              style={{ backgroundColor: visibleState.chartContainer2 ? '#888b8d' : '' }}
-              className={styles.iconButton}
-              onClick={() => toggleVisibility('chartContainer2')}>
-              <FontAwesomeIcon icon={faChartLine} />
-            </button>
-            <button
-              style={{ backgroundColor: visibleState.chartContainer3 ? '#888b8d' : '' }}
-              className={styles.iconButton}
-              onClick={() => toggleVisibility('chartContainer3')}>
-              <FontAwesomeIcon icon={faTrophy} />
-            </button>
-            <button
-              style={{ backgroundColor: visibleState.container3 ? '#888b8d' : '' }}
-              className={styles.iconButton}
-              onClick={() => toggleVisibility('container3')}>
-              <FontAwesomeIcon icon={faGamepad} />
-            </button>
-            <button
-              style={{ backgroundColor: visibleState.container4 ? '#888b8d' : '' }}
-              className={styles.iconButton}
-              onClick={() => toggleVisibility('container4')}>
-              <FontAwesomeIcon icon={faPalette} />
-            </button>
-            <button
-              style={{ backgroundColor: visibleState.container5 ? '#888b8d' : '' }}
-              className={`${styles.iconButton} ${styles.hideOnTablet}`}
-              onClick={() => toggleVisibility('container5')}
-            >
-              <FontAwesomeIcon icon={faGun} />
-            </button>
-            <button className={styles.iconButton} onClick={handleLogout}>
-              <FontAwesomeIcon icon={faSignOut} />
-            </button>
-          </div>
-        </div>
-      </div>
-      {visibleState.container4 && (
-        <div className={`${styles.colorcontainer} ${fullscreenState.container4 ? styles.fullscreen : ''}`}>
-          <div className={styles.bar}>
-            <p>COLOR</p>
-            <div className={styles.barIcons}>
-              <button onClick={() => toggleVisibility('container4')} className={styles.svgButton} aria-label="SVG Button">
-                <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                  <path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z" />
-                </svg>
-              </button>
+      <div className={winStyles.desktop}>
+        {win('info', (
+          <div className={styles.card}>
+            <div className={styles.cardBody}>
+              <p><strong>Username:</strong> {userData?.login}</p>
+              <p><strong>Name:</strong> {capitalizeWords(userData?.firstName || '') + ' ' + capitalizeWords(userData?.lastName || '')}</p>
+              <p><strong>Email:</strong> {userData?.email}</p>
+              <p><strong>Audit Ratio:</strong> {userData?.auditRatio}</p>
+              <p><strong>Total XP:</strong> {xpAmount / 1000} Kilobytes</p>
+              <p><strong>Module Level:</strong> {levelAmount} </p>
+              <p><strong>Last Completed:</strong> {lastProject} </p>
             </div>
           </div>
-          <div className={styles.colorPicker}>
+        )) }
+        {win('notes', (
+          <textarea
+            className={styles.textarea}
+            style={{ flex: 1, margin: 0, height: 'auto', resize: 'none' }}
+            value={notebookContent}
+            onChange={handleChange}
+            placeholder="Write your notes here..."
+          />
+        ))}
+        {win('audit', userData && (
+          <Suspense fallback={<div>Loading chart...</div>}>
+            <DynamicGraph GetChart="BarChart" userData={userData} />
+          </Suspense>
+        ))}
+        {win('levels', xpDistribution && levelAmount ? (
+          <Suspense fallback={<div>Loading chart...</div>}>
+            <DynamicGraph GetChart="XpChart" xpDistribution={xpDistribution} levelAmount={levelAmount} />
+          </Suspense>
+        ) : null)}
+        {win('game', gameData && (
+          <Suspense fallback={<div>Loading chart...</div>}>
+            <DynamicGraph GetChart="HeatMap" gameData={gameData} />
+          </Suspense>
+        ))}
+        {win('mentors', (
+          <div className={styles.card}>
+            <div className={styles.cardBody}>
+              {mentors.length === 0 ? (
+                <p>No audits found.</p>
+              ) : (
+                <ol style={{ paddingLeft: '1.5em' }}>
+                  {mentors.map((m, i) => (
+                    <li key={m.login}>
+                      <strong>{m.login}</strong>{i === 0 ? ' (mentor)' : ''} - {m.count} audit{m.count === 1 ? '' : 's'}, {m.projects} project{m.projects === 1 ? '' : 's'}{m.mentorOf > 0 ? `, mentor of ${m.mentorOf}` : ''}
+                      <br /><small>active {monthYear(m.first)} - {monthYear(m.last)}</small>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+          </div>
+        ))}
+        {win('mines', (
+          <Suspense fallback={<div>Loading Minesweeper...</div>}>
+            <DynamicMinesweeper />
+          </Suspense>
+        ))}
+        {win('color', (
+          <div className={styles.colorPicker} style={{ marginTop: 0, justifyContent: 'center' }}>
             {Object.entries(colorMap).map(([id, colorValue]) => (
               <button
                 key={id}
                 className={styles.colorSquare}
-                onClick={() => setColor(colorValue)}
-                onClickCapture={() => saveColor(colorValue)}
+                onClick={() => { setColor(colorValue); saveColor(colorValue); }}
                 aria-label={`Change color to ${colorValue}`}
                 style={{ backgroundColor: getColorByValue(colorValue) }}
               ></button>
             ))}
           </div>
-        </div>
-      )}
-      {visibleState.container5 && (
-        <div className={`${styles.sicontainer} ${fullscreenState.container5 ? styles.fullscreen : ''}`}>
-          <div className={styles.bar}>
-            <p>SPACE INVADERS</p>
-            <div className={styles.barIcons}>
-              <button onClick={() => toggleVisibility('container5')} className={styles.svgButton} aria-label="SVG Button">
-                <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fillRule="evenodd" strokeLinejoin="round" strokeMiterlimit="2">
-                  <path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z" />
-                </svg>
-              </button>
-            </div>
-          </div>
+        ), 240, 100)}
+        {win('invaders', (
           <Suspense fallback={<div>Loading Space Invaders...</div>}>
             <DynamicSpaceInvaders saveScore={sendScore} />
           </Suspense>
+        ), 320, 300)}
+      </div>
+      <div className={styles.windowbar}>
+        <div className={styles.buttonContainer}>
+          {taskButtons.map(({ id, icon, hideOnTablet }) => (
+            <button
+              key={id}
+              title={WIN_TITLES[id]}
+              style={{ backgroundColor: wins[id].open ? '#888b8d' : '' }}
+              className={`${styles.iconButton} ${hideOnTablet ? styles.hideOnTablet : ''}`}
+              onClick={() => toggleWin(id)}>
+              <FontAwesomeIcon icon={icon} />
+            </button>
+          ))}
+          <button className={styles.iconButton} onClick={handleLogout}>
+            <FontAwesomeIcon icon={faSignOut} />
+          </button>
         </div>
-      )}
+      </div>
     </>
   );
 }

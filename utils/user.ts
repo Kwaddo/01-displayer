@@ -46,6 +46,18 @@ export function getUserIdFromToken(): string | null {
     }
 }
 
+export function isTokenExpired(token?: string | null): boolean {
+    const raw: string | null | undefined = (token ?? getToken())?.replace(/^"|"$/g, '');
+    if (!raw) return true;
+    try {
+        const b64: string = raw.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const payload: { exp?: number } = JSON.parse(atob(b64));
+        return typeof payload.exp === 'number' && payload.exp * 1000 <= Date.now();
+    } catch {
+        return false;
+    }
+}
+
 export async function logout(): Promise<void> {
     localStorage.removeItem('jwtToken');
 }

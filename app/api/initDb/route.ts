@@ -1,17 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getData } from '@/utils/db';
+import { checkStorage } from '@/utils/db';
 
 export async function GET() {
   try {
-    const posts = await getData();
-    return NextResponse.json({
-      message: 'Database connected successfully and fetched data.',
-      posts: posts
-    });
+    await checkStorage();
+    return NextResponse.json({ message: 'Storage connected successfully.' });
   } catch (error) {
-    console.error('Error querying the database:', error);
-    return NextResponse.json({
-      error: 'Failed to fetch data from the database.'
-    }, { status: 500 });
+    console.error('Error reaching storage:', error);
+    return NextResponse.json({ error: 'Failed to reach storage.' }, { status: 500 });
   }
 }

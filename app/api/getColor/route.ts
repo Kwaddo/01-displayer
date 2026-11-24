@@ -11,10 +11,9 @@ export async function GET(request: Request) {
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
-    const colorId = parseInt(user.color_id) || '';
-    return NextResponse.json({ colorId: colorId });
+    return NextResponse.json({ colorId: user.color_id || 1 });
   } catch (error) {
-    console.error('Error fetching notes:', error);
-    return NextResponse.json({ error: 'Failed to fetch notes' }, { status: 500 });
+    console.error('Error fetching color:', error);
+    return NextResponse.json({ error: 'Failed to fetch color' }, { status: 500 });
   }
 }

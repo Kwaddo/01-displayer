@@ -155,7 +155,7 @@ const Graph: React.FC<GraphProps> = ({
                                 rotate: 0,
                             },
                         },
-                        colors: [undefined],
+                        colors: ['#008FFB'],
                         responsive: [
                             {
                                 breakpoint: 768,
@@ -222,7 +222,8 @@ const Graph: React.FC<GraphProps> = ({
                         chart: { type: 'heatmap', height: '100%', width: '100%', toolbar: { show: false } },
                         tooltip: {
                             enabled: true,
-                            custom: function ({ seriesIndex, dataPointIndex, w }: ApexTooltip) {
+                            custom: function (opts: unknown) {
+                                const { seriesIndex, dataPointIndex, w } = opts as ApexTooltip;
                                 const data = w.config.series[seriesIndex].data[dataPointIndex] as ApexTooltipSeriesData;
                                 return `<div class="custom-tooltip">
                                 <span>Level: ${data.level}</span><br/>
@@ -314,6 +315,7 @@ const Graph: React.FC<GraphProps> = ({
                     return;
             }
 
+            if (!chartRef.current) return;
             chart = new ApexCharts(chartRef.current, chartOptions);
             chart.render();
         };
@@ -324,7 +326,7 @@ const Graph: React.FC<GraphProps> = ({
             if (chart) chart.destroy();
         };
     }, [GetChart, userData, xpDistribution, gameData, levelAmount, setTotalUsers]);
-    return <div ref={chartRef}></div>;
+    return <div ref={chartRef} style={{ width: "100%", minHeight: 0 }}></div>;
 };
 
 export default Graph;

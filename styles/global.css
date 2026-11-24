@@ -11,11 +11,11 @@ body {
     justify-content: center;
     align-items: center;
     position: relative;
-    background: linear-gradient(45deg, theme('colors.t-normalb') 25%, theme('colors.t-darkb') 62.5%, theme('colors.t-black') 100%);
+    background: linear-gradient(45deg, #AAC7D8 25%, #44576D 62.5%, #29353C 100%);
     background-size: 400% 400%;
     animation: Animation 5s ease infinite;
     transition: background 1s ease-in-out;
-    background-color: theme('colors.t-darkb');
+    background-color: #44576D;
     transition: background-color 1s ease-in-out;
     overflow-x: hidden;
 }
@@ -38,8 +38,14 @@ body.fullscreen {
 
 @media (min-width: 900px) {
     body.dashboard-background {
-        overflow: hidden;
+        overflow-x: hidden;
+        overflow-y: auto;
     }
+}
+
+body.dashboard-background {
+    align-items: flex-start;
+    overflow: hidden !important;
 }
 
 @keyframes Animation {

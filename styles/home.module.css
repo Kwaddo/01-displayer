@@ -22,7 +22,8 @@
     display: flex;
     flex-direction: row;
     gap: 20px;
-    max-height: 80vh;
+    flex-wrap: wrap;
+    justify-content: center;
 }
 
 .chartcontainers {
@@ -271,7 +272,7 @@
     margin-bottom: 1rem;
     width: 100%;
     margin-top: 50px;
-    color: theme('colors.t-black');
+    color: #29353C;
     text-decoration: double;
 }
 
@@ -377,7 +378,7 @@
     padding: 10px -20px;
     font-size: 16px;
     background-color: #f1f1f1;
-    border: 2px solid theme('colors.t-black');
+    border: 2px solid #29353C;
 }
 
 .fullscreen {
