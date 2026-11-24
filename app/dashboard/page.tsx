@@ -60,9 +60,10 @@ interface MentorEntry {
 
 // Completed audits (succeeded/failed) done BY others ON groups the user belongs to,
 // across every event/cohort. Cancelled/expired/reassigned audits are excluded.
+// All audits (any closure) are fetched so we can tell how each audit was created; only completed
+// ones (succeeded/failed) are counted.
 const auditQuery = `query Audits($uid: Int!) {
   audit(where: {
-    closureType: {_in: [succeeded, failed]},
     auditorId: {_neq: $uid},
     group: {_or: [{captainId: {_eq: $uid}}, {members: {userId: {_eq: $uid}}}]}
   }) {
@@ -71,6 +72,8 @@ const auditQuery = `query Audits($uid: Int!) {
     auditor { avatarUrl }
     auditedAt
     createdAt
+    closedAt
+    closureType
     group {
       id
       eventId
@@ -237,7 +240,6 @@ export default function HomePage() {
   const [mentors, setMentors] = useState<MentorEntry[]>([]);
   const [allAuditors, setAllAuditors] = useState<MentorEntry[]>([]);
   const [auditTab, setAuditTab] = useState<'mentors' | 'all'>('mentors');
-  const [labelsLoading, setLabelsLoading] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -329,8 +331,22 @@ export default function HomePage() {
           setGameData(gData);
           try {
             const auditData = await fetchGraphQL(auditQuery, { uid: loggedInUser.id });
-            type Row = { auditorId: number; auditorLogin: string; auditor?: { avatarUrl: string | null } | null; auditedAt: string | null; createdAt: string; group: { id: number; eventId: number; event: { path: string } } };
-            const rows: Row[] = auditData?.audit || [];
+            type Row = { auditorId: number; auditorLogin: string; auditor?: { avatarUrl: string | null } | null; auditedAt: string | null; createdAt: string; closedAt?: string | null; closureType?: string | null; group: { id: number; eventId: number; event: { path: string } } };
+            const allAudits: Row[] = auditData?.audit || [];
+            const rows: Row[] = allAudits.filter((r) => r.closureType === 'succeeded' || r.closureType === 'failed');
+            // "Added by hand": the audit was created on its own (not in the automatic batch generated at
+            // submission, and not a takeover of a reassigned audit). That is staff putting a specific
+            // auditor on the project, which on real data has only ever been a mentor.
+            const byGroup: Record<number, Row[]> = {};
+            allAudits.forEach((r) => (byGroup[r.group.id] ||= []).push(r));
+            const manualAdd = new Set<Row>();
+            rows.forEach((r) => {
+              const c = Date.parse(r.createdAt);
+              const siblings = byGroup[r.group.id] || [];
+              const batch = siblings.filter((b) => Math.abs(Date.parse(b.createdAt) - c) <= 3000).length;
+              const takeover = siblings.some((b) => b !== r && b.closureType === 'reassigned' && b.closedAt && Math.abs(Date.parse(b.closedAt) - c) <= 5000);
+              if (batch === 1 && !takeover) manualAdd.add(r);
+            });
             const summarize = (list: Row[]): MentorEntry[] => {
               const stats: Record<number, MentorEntry & { groups: Set<number> }> = {};
               list.forEach((r) => {
@@ -378,11 +394,11 @@ export default function HomePage() {
               console.error('Failed to check mentor avatars:', avatarErr);
             }
             const sameCohort = (auditorId: number) => Array.from(cohorts[auditorId] || []).some((e) => myCohorts.has(e));
-            type Label = { labelName: string; createdAt: string };
+            type Period = { userId: number; label: string; since: string; endedAt: string | null };
             const dayStart = (iso: string) => Date.parse(iso.slice(0, 10));
-            // Decision order: roster dates (manual override) > Staff label > Tech Team label date >
-            // Audit Mentor avatar date > undated roster entry.
-            const makeWasMentor = (labels: Record<number, Label[]>) => (r: Row) => {
+            // Decision order: roster dates (manual override) > added-by-hand audit > Staff > recorded Tech Team periods (from the
+            // Neon mentor registry, including ended ones) > Audit Mentor avatar date > undated roster entry.
+            const makeWasMentor = (periods: Period[]) => (r: Row) => {
               const isPiscine = !!r.group.event?.path?.includes('piscine');
               const t = Date.parse(r.auditedAt || r.createdAt);
               const login = r.auditorLogin.toLowerCase();
@@ -390,10 +406,12 @@ export default function HomePage() {
               if (dated.length > 0) {
                 return dated.some((m) => (!m.from || t >= Date.parse(m.from)) && (!m.to || t <= Date.parse(m.to) + 86400000));
               }
-              const own = labels[r.auditorId] || [];
-              if (own.some((l) => l.labelName === 'Staff')) return true;
-              const tech = own.find((l) => l.labelName === 'Tech Team');
-              if (tech && t >= dayStart(tech.createdAt)) return true;
+              if (manualAdd.has(r)) return true;
+              const own = periods.filter((p) => p.userId === r.auditorId);
+              if (own.some((p) => p.label === 'Staff')) return true;
+              const techPeriods = own.filter((p) => p.label === 'Tech Team');
+              const tech = techPeriods.length > 0;
+              if (techPeriods.some((p) => t >= dayStart(p.since) && (!p.endedAt || t <= Date.parse(p.endedAt)))) return true;
               if (!isPiscine && mentorSince[r.auditorId] !== undefined && t >= mentorSince[r.auditorId]) return true;
               if (tech || mentorSince[r.auditorId] !== undefined) return false;
               return MENTOR_ROSTER.some((m) => {
@@ -404,16 +422,15 @@ export default function HomePage() {
               });
             };
             setAllAuditors(summarize(rows));
-            setMentors(summarize(rows.filter(makeWasMentor({}))));
+            setMentors(summarize(rows.filter(makeWasMentor([]))));
 
-            // Staff / Tech Team labels come from each auditor's public profile (slow endpoint), so load
-            // them in the background in small batches and refresh the leaderboard when done.
+            // Mentor periods come from the Neon registry (fast). Profiles not yet recorded are read from the
+            // platform's slow profile endpoint in the background and saved to the registry.
             const platformToken = window.localStorage.getItem('jwtToken')?.replace(/^"|"$/g, '') || '';
             const campus = modulePaths[0]?.split('/')[1] || '';
             const auditorIds = Array.from(new Set(rows.map((r) => r.auditorId)));
             if (platformToken && campus && auditorIds.length > 0) {
-              setLabelsLoading(true);
-              const labels: Record<number, Label[]> = {};
+              let periods: Period[] = [];
               const call = async (userIds: number[], fetchMissing: boolean) => {
                 try {
                   const res = await fetch('/api/auditorLabels', {
@@ -423,29 +440,25 @@ export default function HomePage() {
                   });
                   if (!res.ok) return userIds;
                   const data = await res.json();
-                  Object.assign(labels, data.labels || {});
+                  const seen = new Set(userIds);
+                  periods = [...periods.filter((p) => !seen.has(p.userId)), ...((data.periods || []) as Period[])];
                   return (data.pending || []) as number[];
                 } catch (labelErr) {
                   console.error('Failed to load auditor labels:', labelErr);
                   return userIds;
                 }
               };
-              // 1) everything already cached (fast), 2) slowly fill in the rest, two profiles per call.
-              const refresh = () => setMentors(summarize(rows.filter(makeWasMentor(labels))));
-              const pending = await call(auditorIds, false);
+              // 1) Use everything already recorded (fast) and render. 2) Quietly read at most 4 unrecorded
+              //    profiles per page load (busiest auditors first); the registry fills up over visits.
+              const refresh = () => setMentors(summarize(rows.filter(makeWasMentor(periods))));
+              const auditCount: Record<number, number> = {};
+              rows.forEach((r) => (auditCount[r.auditorId] = (auditCount[r.auditorId] || 0) + 1));
+              const pending = (await call(auditorIds, false)).sort((x, y) => (auditCount[y] || 0) - (auditCount[x] || 0));
               refresh();
-              const queue = [...pending];
-              const worker = async () => {
-                while (queue.length > 0) {
-                  const chunk = queue.splice(0, 2);
-                  await call(chunk, true);
-                  refresh();
-                }
-              };
-              Promise.all([worker(), worker()]).then(() => {
-                setMentors(summarize(rows.filter(makeWasMentor(labels))));
-                setLabelsLoading(false);
-              });
+              const background = pending.slice(0, 4);
+              if (background.length > 0) {
+                Promise.all([background.slice(0, 2), background.slice(2, 4)].filter((c) => c.length > 0).map((c) => call(c, true))).then(refresh);
+              }
             }
           } catch (auditErr) {
             if (auditErr instanceof AuthExpiredError) throw auditErr;
@@ -925,7 +938,6 @@ export default function HomePage() {
                   <button className={styles.iconButton} style={{ width: 'auto', height: 24, translate: 'none', fontSize: 12, backgroundColor: tab === 'all' ? '#888b8d' : '' }} onClick={() => setAuditTab('all')}>All auditors</button>
                 </div>
                 <p><small>{list.length} auditor{list.length === 1 ? '' : 's'}, {total} completed audit{total === 1 ? '' : 's'} on you</small></p>
-                {labelsLoading && tab === 'mentors' && <p><small>Checking Staff / Tech Team labels...</small></p>}
                 {list.length === 0 ? (
                   <p>No audits found.</p>
                 ) : (
