@@ -14,13 +14,9 @@ export const MENTOR_ROSTER: MentorPeriod[] = [
   // Student mentor auditors (dates still needed for same-cohort ones)
   { login: 'saysharaf' },
   { login: 'mohamedahmed1' },
-  // Cohort 3 (same cohort as ak1). Periods inferred from the Cohort 3 mentor-auditor batch in ak1's
-  // own platform records (authored by staff): 2025-06-25..2025-12-22 and 2026-01-12..2026-01-28.
-  { login: 'haalbasara', from: '2025-06-25', to: '2025-12-22' },
-  { login: 'haalbasara', from: '2026-01-12', to: '2026-01-28' },
+  { login: 'haalbasara' },
   { login: 'haaljafen' },
-  { login: 'falmoath', from: '2025-06-25', to: '2025-12-22' },
-  { login: 'falmoath', from: '2026-01-12', to: '2026-01-28' },
+  { login: 'falmoath' },
   { login: 'fatali' },
   { login: 'dalabbas' },
   { login: 'rihasan' },
