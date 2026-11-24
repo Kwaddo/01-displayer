@@ -442,7 +442,7 @@ export default function HomePage() {
               console.error('Failed to read mentor records:', exactErr);
             }
             const dayStart = (iso: string) => Date.parse(iso.slice(0, 10));
-            // Decision order: roster dates (manual override) > added-by-hand audit > recorded Tech Team periods (from the
+            // Decision order: roster dates (manual override) > exact mentor record > added-by-hand audit > Staff > recorded Tech Team periods (from the
             // Neon mentor registry, including ended ones) > Audit Mentor avatar date > undated roster entry.
             const makeWhy = (periods: Period[]) => (r: Row): string | null => {
               const isPiscine = !!r.group.event?.path?.includes('piscine');
@@ -455,6 +455,7 @@ export default function HomePage() {
               const rec = exact.find((x) => x.userId === r.auditorId && t >= Date.parse(x.startAt) && (!x.endAt || t <= Date.parse(x.endAt)));
               if (rec) return `mentor record ${rec.startAt.slice(0, 10)} to ${rec.endAt ? rec.endAt.slice(0, 10) : 'now'} (exact)`;
               if (manualAdd.has(r)) return 'added by hand';
+              if (periods.some((p) => p.userId === r.auditorId && p.label === 'Staff')) return 'Staff';
               const techPeriods = periods.filter((p) => p.userId === r.auditorId && p.label === 'Tech Team');
               const hit = techPeriods.find((p) => t >= dayStart(p.since) && (!p.endedAt || t <= Date.parse(p.endedAt)));
               if (hit) return hit.endedAt ? 'past Tech Team' : 'Tech Team';
@@ -479,9 +480,24 @@ export default function HomePage() {
               if (mentorSince[auditorId] !== undefined) return 'mentor (avatar)';
               return 'mentor';
             };
+            // Each project attempt normally has one mentor auditor. When a group already has a mentor audit
+            // backed by strong evidence, weaker estimates on the same group (avatar dates, undated roster
+            // entries) are treated as peer audits.
+            const STRONG = /^(mentor record|roster period|added by hand|Staff|Tech Team|past Tech Team)/;
             const mentorList = (periods: Period[]) => {
               const why = makeWhy(periods);
-              return summarize(rows.filter((r) => why(r) !== null), why, makeRoleOf(periods));
+              const reason = new Map<Row, string>();
+              rows.forEach((r) => {
+                const w = why(r);
+                if (w) reason.set(r, w);
+              });
+              const strongGroups = new Set(rows.filter((r) => STRONG.test(reason.get(r) || '')).map((r) => r.group.id));
+              const counted = rows.filter((r) => {
+                const w = reason.get(r);
+                if (!w) return false;
+                return STRONG.test(w) || !strongGroups.has(r.group.id);
+              });
+              return summarize(counted, (r) => reason.get(r) || null, makeRoleOf(periods));
             };
             setAllAuditors(summarize(rows));
             setMentors(mentorList([]));
