@@ -24,6 +24,14 @@ export const MENTOR_ROSTER: MentorPeriod[] = [
   { login: 'falmoath' },
   { login: 'fatali' },
   { login: 'dalabbas' },
+  { login: 'rihasan' },
+  { login: 'hadwan' },
+  { login: 'aalbraik' },
+  { login: 'alikhalaf' },
+  { login: 'ahkamal' },
+  { login: 'abdeahmed' },
+  { login: 'daalkhalaf' },
+  { login: 'aalghanem' },
 
   // ak1: periods taken from their own platform records ("Mentor auditor" away records),
   // then Tech Team since 2026-10-29.
@@ -32,12 +40,9 @@ export const MENTOR_ROSTER: MentorPeriod[] = [
   { login: 'ak1', kind: 'tech', from: '2026-10-29' },
 
   // Tech mentors (always count)
-  { login: 'rihasan', kind: 'tech' },
-  { login: 'hadwan', kind: 'tech' },
-  { login: 'aalbraik', kind: 'tech' },
-  { login: 'alikhalaf', kind: 'tech' },
-  { login: 'ahkamal', kind: 'tech' },
-  { login: 'abdeahmed', kind: 'tech' },
-  { login: 'daalkhalaf', kind: 'tech' },
-  { login: 'aalghanem', kind: 'tech' },
+  { login: 'aaljamal', kind: 'tech' },
+  { login: 'yalmasri', kind: 'tech' },
+  { login: 'nqasim', kind: 'tech' },
+  { login: 'ralhalwa', kind: 'tech' },
+  { login: 'aabdeen', kind: 'tech' },
 ];
