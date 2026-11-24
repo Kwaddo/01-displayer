@@ -27,7 +27,6 @@ export const MENTOR_ROSTER: MentorPeriod[] = [
   { login: 'abdeahmed' },
   { login: 'daalkhalaf' },
   { login: 'aalghanem' },
-  { login: 'malhawi' }, // past mentor auditor (Cohort 2)
 
   { login: 'ak1' },
 
