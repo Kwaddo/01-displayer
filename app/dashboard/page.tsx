@@ -57,6 +57,7 @@ interface MentorEntry {
   first: string;
   last: string;
   audits: { date: string; project: string; reason?: string }[];
+  role?: string;
 }
 
 // Completed audits (succeeded/failed) done BY others ON groups the user belongs to,
@@ -105,6 +106,10 @@ const cohortQuery = `query Cohorts($ids: [Int!]!) {
     userId
     eventId
   }
+}`;
+
+const openRecordsQuery = `query OpenRecords($ids: [Int!]!) {
+  record_public_view(where: {userId: {_in: $ids}}) { userId startAt }
 }`;
 
 const query = `query User($moduleLike: String!, $modulePaths: [String!]!) {
@@ -349,7 +354,9 @@ export default function HomePage() {
               const takeover = siblings.some((b) => b !== r && b.closureType === 'reassigned' && b.closedAt && Math.abs(Date.parse(b.closedAt) - c) <= 5000);
               if (batch === 1 && !takeover) manualAdd.add(r);
             });
-            const summarize = (list: Row[], why?: (r: Row) => string | null): MentorEntry[] => {
+            const idOf: Record<string, number> = {};
+            rows.forEach((r) => (idOf[r.auditorLogin] = r.auditorId));
+            const summarize = (list: Row[], why?: (r: Row) => string | null, roleOf?: (auditorId: number) => string): MentorEntry[] => {
               const stats: Record<number, MentorEntry & { groups: Set<number> }> = {};
               list.forEach((r) => {
                 const when = r.auditedAt || r.createdAt;
@@ -361,7 +368,7 @@ export default function HomePage() {
                 if (when > e.last) e.last = when;
               });
               return Object.values(stats)
-                .map((e) => ({ login: e.login, count: e.count, projects: e.groups.size, first: e.first, last: e.last, audits: e.audits.sort((a, b) => a.date.localeCompare(b.date)) }))
+                .map((e) => ({ login: e.login, count: e.count, projects: e.groups.size, first: e.first, last: e.last, audits: e.audits.sort((a, b) => a.date.localeCompare(b.date)), role: roleOf?.(idOf[e.login]) }))
                 .sort((a, b) => b.count - a.count || a.login.localeCompare(b.login));
             };
             // Only people on the roster (or with the Audit Mentor avatar) can be mentor audits. Piscine
@@ -402,6 +409,23 @@ export default function HomePage() {
             } catch (avatarErr) {
               console.error('Failed to check mentor avatars:', avatarErr);
             }
+            // Past mentors (avatar but no current Tech Team label): their mentoring ended no later than the
+            // start of their current open record (status change that replaced it). Estimate, not proof.
+            const mentorUntil: Record<number, number> = {};
+            try {
+              const avatarIds = Object.keys(mentorSince).map(Number);
+              if (avatarIds.length > 0) {
+                const rec = await fetchGraphQL(openRecordsQuery, { ids: avatarIds });
+                (rec?.record_public_view || []).forEach((x: { userId: number; startAt: string }) => {
+                  const start = Date.parse(x.startAt);
+                  if (start > mentorSince[x.userId] && (mentorUntil[x.userId] === undefined || start < mentorUntil[x.userId])) {
+                    mentorUntil[x.userId] = start;
+                  }
+                });
+              }
+            } catch (recErr) {
+              console.error('Failed to load open records:', recErr);
+            }
             const sameCohort = (auditorId: number) => Array.from(cohorts[auditorId] || []).some((e) => myCohorts.has(e));
             type Period = { userId: number; label: string; since: string; endedAt: string | null };
             const dayStart = (iso: string) => Date.parse(iso.slice(0, 10));
@@ -419,7 +443,11 @@ export default function HomePage() {
               const techPeriods = periods.filter((p) => p.userId === r.auditorId && p.label === 'Tech Team');
               const hit = techPeriods.find((p) => t >= dayStart(p.since) && (!p.endedAt || t <= Date.parse(p.endedAt)));
               if (hit) return hit.endedAt ? 'past Tech Team' : 'Tech Team';
-              if (!isPiscine && mentorSince[r.auditorId] !== undefined && t >= mentorSince[r.auditorId]) return avatarKind[r.auditorId];
+              if (!isPiscine && mentorSince[r.auditorId] !== undefined && t >= mentorSince[r.auditorId]) {
+                const until = techPeriods.length === 0 ? mentorUntil[r.auditorId] : undefined;
+                if (until === undefined) return avatarKind[r.auditorId];
+                if (t <= until) return `past mentor (est.): ${avatarKind[r.auditorId]}, until ~${new Date(until).toISOString().slice(0, 10)}`;
+              }
               if (techPeriods.length > 0 || mentorSince[r.auditorId] !== undefined) return null;
               const entry = MENTOR_ROSTER.find((m) => m.login.toLowerCase() === login);
               if (!entry) return null;
@@ -427,9 +455,18 @@ export default function HomePage() {
               // Piscine audits by student mentors are peer audits.
               return !isPiscine && !sameCohort(r.auditorId) ? 'roster (other cohort)' : null;
             };
+            // Staff supersedes Tech Team when someone has both labels.
+            const makeRoleOf = (periods: Period[]) => (auditorId: number) => {
+              const own = periods.filter((p) => p.userId === auditorId);
+              if (own.some((p) => p.label === 'Staff')) return 'Staff';
+              if (own.some((p) => p.label === 'Tech Team' && !p.endedAt)) return 'Tech Team';
+              if (own.some((p) => p.label === 'Tech Team') || mentorUntil[auditorId] !== undefined) return 'past mentor';
+              if (mentorSince[auditorId] !== undefined) return 'mentor (avatar)';
+              return 'mentor';
+            };
             const mentorList = (periods: Period[]) => {
               const why = makeWhy(periods);
-              return summarize(rows.filter((r) => why(r) !== null), why);
+              return summarize(rows.filter((r) => why(r) !== null), why, makeRoleOf(periods));
             };
             setAllAuditors(summarize(rows));
             setMentors(mentorList([]));
@@ -954,7 +991,7 @@ export default function HomePage() {
                   <ol style={{ paddingLeft: '2em' }}>
                     {list.map((m) => (
                       <li key={m.login}>
-                        <strong>{m.login}</strong> - {m.count} audit{m.count === 1 ? '' : 's'}, {m.projects} project{m.projects === 1 ? '' : 's'}
+                        <strong>{m.login}</strong>{m.role ? ` [${m.role}]` : ''} - {m.count} audit{m.count === 1 ? '' : 's'}, {m.projects} project{m.projects === 1 ? '' : 's'}
                         <br /><small>{monthYear(m.first)} - {monthYear(m.last)}</small>
                         <details>
                           <summary style={{ cursor: 'pointer', fontSize: 11 }}>projects</summary>
