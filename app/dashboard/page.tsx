@@ -428,6 +428,19 @@ export default function HomePage() {
             }
             const sameCohort = (auditorId: number) => Array.from(cohorts[auditorId] || []).some((e) => myCohorts.has(e));
             type Period = { userId: number; label: string; since: string; endedAt: string | null };
+            // Exact mentor periods self-reported by mentors (their own "Mentor auditor" away records).
+            type ExactRecord = { userId: number; startAt: string; endAt: string | null; message: string | null };
+            let exact: ExactRecord[] = [];
+            try {
+              const res = await fetch('/api/mentorRecords', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userIds: Array.from(new Set(rows.map((r) => r.auditorId))) }),
+              });
+              if (res.ok) exact = (await res.json()).records || [];
+            } catch (exactErr) {
+              console.error('Failed to read mentor records:', exactErr);
+            }
             const dayStart = (iso: string) => Date.parse(iso.slice(0, 10));
             // Decision order: roster dates (manual override) > added-by-hand audit > recorded Tech Team periods (from the
             // Neon mentor registry, including ended ones) > Audit Mentor avatar date > undated roster entry.
@@ -439,6 +452,8 @@ export default function HomePage() {
               if (dated.length > 0) {
                 return dated.some((m) => (!m.from || t >= Date.parse(m.from)) && (!m.to || t <= Date.parse(m.to) + 86400000)) ? 'roster period' : null;
               }
+              const rec = exact.find((x) => x.userId === r.auditorId && t >= Date.parse(x.startAt) && (!x.endAt || t <= Date.parse(x.endAt)));
+              if (rec) return `mentor record ${rec.startAt.slice(0, 10)} to ${rec.endAt ? rec.endAt.slice(0, 10) : 'now'} (exact)`;
               if (manualAdd.has(r)) return 'added by hand';
               const techPeriods = periods.filter((p) => p.userId === r.auditorId && p.label === 'Tech Team');
               const hit = techPeriods.find((p) => t >= dayStart(p.since) && (!p.endedAt || t <= Date.parse(p.endedAt)));
@@ -474,6 +489,11 @@ export default function HomePage() {
             // Mentor periods come from the Neon registry (fast). Profiles not yet recorded are read from the
             // platform's slow profile endpoint in the background and saved to the registry.
             const platformToken = window.localStorage.getItem('jwtToken')?.replace(/^"|"$/g, '') || '';
+            // Share this user's own mentor periods (only "away" records mentioning mentoring) so everyone's
+            // leaderboard gets exact dates for them.
+            if (platformToken) {
+              fetch('/api/mentorRecords', { method: 'POST', headers: { 'x-platform-token': platformToken } }).catch(() => undefined);
+            }
             const campus = modulePaths[0]?.split('/')[1] || '';
             const auditorIds = Array.from(new Set(rows.map((r) => r.auditorId)));
             if (platformToken && campus && auditorIds.length > 0) {

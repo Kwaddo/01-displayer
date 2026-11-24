@@ -27,6 +27,16 @@ export function ensureMentorTables() {
     // labels IS NULL marks a failed fetch; it is retried after a day, not on every page load.
     await sql`ALTER TABLE auditor_labels ALTER COLUMN labels DROP NOT NULL`;
     await sql`
+      CREATE TABLE IF NOT EXISTS mentor_records (
+        user_id integer NOT NULL,
+        login text NOT NULL,
+        start_at timestamptz NOT NULL,
+        end_at timestamptz,
+        message text,
+        reported_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (user_id, start_at)
+      )`;
+    await sql`
       CREATE TABLE IF NOT EXISTS mentor_periods (
         user_id integer NOT NULL,
         login text,
@@ -124,4 +134,34 @@ export async function readRegistry(ids: number[], freshDays = 7) {
       endedAt: p.ended_at ? new Date(p.ended_at).toISOString() : null,
     })),
   };
+}
+
+
+// Exact mentor periods self-reported by mentors: when a mentor opens the dashboard, their own
+// "away" records whose message mentions mentoring are saved here (start, end, message only).
+export type MentorRecord = { userId: number; login: string; startAt: string; endAt: string | null; message: string | null };
+
+export async function saveOwnMentorRecords(userId: number, login: string, records: { startAt: string; endAt: string | null; message: string | null }[]) {
+  await ensureMentorTables();
+  for (const r of records) {
+    await sql`
+      INSERT INTO mentor_records (user_id, login, start_at, end_at, message)
+      VALUES (${userId}, ${login}, ${r.startAt}, ${r.endAt}, ${r.message})
+      ON CONFLICT (user_id, start_at) DO UPDATE SET end_at = EXCLUDED.end_at, message = EXCLUDED.message, reported_at = now()
+    `;
+  }
+}
+
+export async function readMentorRecords(ids: number[]): Promise<MentorRecord[]> {
+  await ensureMentorTables();
+  const rows = (await sql`
+    SELECT user_id, login, start_at, end_at, message FROM mentor_records WHERE user_id = ANY(${ids})
+  `) as { user_id: number; login: string; start_at: string; end_at: string | null; message: string | null }[];
+  return rows.map((r) => ({
+    userId: r.user_id,
+    login: r.login,
+    startAt: new Date(r.start_at).toISOString(),
+    endAt: r.end_at ? new Date(r.end_at).toISOString() : null,
+    message: r.message,
+  }));
 }
