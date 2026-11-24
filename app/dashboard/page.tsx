@@ -56,6 +56,7 @@ interface MentorEntry {
   projects: number;
   first: string;
   last: string;
+  audits: { date: string; project: string; reason?: string }[];
 }
 
 // Completed audits (succeeded/failed) done BY others ON groups the user belongs to,
@@ -76,6 +77,7 @@ const auditQuery = `query Audits($uid: Int!) {
     closureType
     group {
       id
+      path
       eventId
       event { path }
     }
@@ -331,7 +333,7 @@ export default function HomePage() {
           setGameData(gData);
           try {
             const auditData = await fetchGraphQL(auditQuery, { uid: loggedInUser.id });
-            type Row = { auditorId: number; auditorLogin: string; auditor?: { avatarUrl: string | null } | null; auditedAt: string | null; createdAt: string; closedAt?: string | null; closureType?: string | null; group: { id: number; eventId: number; event: { path: string } } };
+            type Row = { auditorId: number; auditorLogin: string; auditor?: { avatarUrl: string | null } | null; auditedAt: string | null; createdAt: string; closedAt?: string | null; closureType?: string | null; group: { id: number; path: string; eventId: number; event: { path: string } } };
             const allAudits: Row[] = auditData?.audit || [];
             const rows: Row[] = allAudits.filter((r) => r.closureType === 'succeeded' || r.closureType === 'failed');
             // "Added by hand": the audit was created on its own (not in the automatic batch generated at
@@ -347,18 +349,19 @@ export default function HomePage() {
               const takeover = siblings.some((b) => b !== r && b.closureType === 'reassigned' && b.closedAt && Math.abs(Date.parse(b.closedAt) - c) <= 5000);
               if (batch === 1 && !takeover) manualAdd.add(r);
             });
-            const summarize = (list: Row[]): MentorEntry[] => {
+            const summarize = (list: Row[], why?: (r: Row) => string | null): MentorEntry[] => {
               const stats: Record<number, MentorEntry & { groups: Set<number> }> = {};
               list.forEach((r) => {
                 const when = r.auditedAt || r.createdAt;
-                const e = stats[r.auditorId] || (stats[r.auditorId] = { login: r.auditorLogin, count: 0, projects: 0, first: when, last: when, groups: new Set() });
+                const e = stats[r.auditorId] || (stats[r.auditorId] = { login: r.auditorLogin, count: 0, projects: 0, first: when, last: when, audits: [], groups: new Set() });
                 e.count++;
                 e.groups.add(r.group.id);
+                e.audits.push({ date: when, project: r.group.path.split('/').pop() || '', reason: why?.(r) || undefined });
                 if (when < e.first) e.first = when;
                 if (when > e.last) e.last = when;
               });
               return Object.values(stats)
-                .map((e) => ({ login: e.login, count: e.count, projects: e.groups.size, first: e.first, last: e.last }))
+                .map((e) => ({ login: e.login, count: e.count, projects: e.groups.size, first: e.first, last: e.last, audits: e.audits.sort((a, b) => a.date.localeCompare(b.date)) }))
                 .sort((a, b) => b.count - a.count || a.login.localeCompare(b.login));
             };
             // Only people on the roster (or with the Audit Mentor avatar) can be mentor audits. Piscine
@@ -398,30 +401,32 @@ export default function HomePage() {
             const dayStart = (iso: string) => Date.parse(iso.slice(0, 10));
             // Decision order: roster dates (manual override) > added-by-hand audit > recorded Tech Team periods (from the
             // Neon mentor registry, including ended ones) > Audit Mentor avatar date > undated roster entry.
-            const makeWasMentor = (periods: Period[]) => (r: Row) => {
+            const makeWhy = (periods: Period[]) => (r: Row): string | null => {
               const isPiscine = !!r.group.event?.path?.includes('piscine');
               const t = Date.parse(r.auditedAt || r.createdAt);
               const login = r.auditorLogin.toLowerCase();
               const dated = MENTOR_ROSTER.filter((m) => m.login.toLowerCase() === login && (m.from || m.to));
               if (dated.length > 0) {
-                return dated.some((m) => (!m.from || t >= Date.parse(m.from)) && (!m.to || t <= Date.parse(m.to) + 86400000));
+                return dated.some((m) => (!m.from || t >= Date.parse(m.from)) && (!m.to || t <= Date.parse(m.to) + 86400000)) ? 'roster period' : null;
               }
-              if (manualAdd.has(r)) return true;
-              const own = periods.filter((p) => p.userId === r.auditorId);
-              const techPeriods = own.filter((p) => p.label === 'Tech Team');
-              const tech = techPeriods.length > 0;
-              if (techPeriods.some((p) => t >= dayStart(p.since) && (!p.endedAt || t <= Date.parse(p.endedAt)))) return true;
-              if (!isPiscine && mentorSince[r.auditorId] !== undefined && t >= mentorSince[r.auditorId]) return true;
-              if (tech || mentorSince[r.auditorId] !== undefined) return false;
-              return MENTOR_ROSTER.some((m) => {
-                if (m.login.toLowerCase() !== login) return false;
-                if (m.kind === 'tech') return true;
-                // Piscine audits by student mentors are peer audits.
-                return !isPiscine && !sameCohort(r.auditorId);
-              });
+              if (manualAdd.has(r)) return 'added by hand';
+              const techPeriods = periods.filter((p) => p.userId === r.auditorId && p.label === 'Tech Team');
+              const hit = techPeriods.find((p) => t >= dayStart(p.since) && (!p.endedAt || t <= Date.parse(p.endedAt)));
+              if (hit) return hit.endedAt ? 'past Tech Team' : 'Tech Team';
+              if (!isPiscine && mentorSince[r.auditorId] !== undefined && t >= mentorSince[r.auditorId]) return 'Audit Mentor avatar';
+              if (techPeriods.length > 0 || mentorSince[r.auditorId] !== undefined) return null;
+              const entry = MENTOR_ROSTER.find((m) => m.login.toLowerCase() === login);
+              if (!entry) return null;
+              if (entry.kind === 'tech') return 'roster';
+              // Piscine audits by student mentors are peer audits.
+              return !isPiscine && !sameCohort(r.auditorId) ? 'roster (other cohort)' : null;
+            };
+            const mentorList = (periods: Period[]) => {
+              const why = makeWhy(periods);
+              return summarize(rows.filter((r) => why(r) !== null), why);
             };
             setAllAuditors(summarize(rows));
-            setMentors(summarize(rows.filter(makeWasMentor([]))));
+            setMentors(mentorList([]));
 
             // Mentor periods come from the Neon registry (fast). Profiles not yet recorded are read from the
             // platform's slow profile endpoint in the background and saved to the registry.
@@ -449,7 +454,7 @@ export default function HomePage() {
               };
               // 1) Use everything already recorded (fast) and render. 2) Quietly read at most 4 unrecorded
               //    profiles per page load (busiest auditors first); the registry fills up over visits.
-              const refresh = () => setMentors(summarize(rows.filter(makeWasMentor(periods))));
+              const refresh = () => setMentors(mentorList(periods));
               const auditCount: Record<number, number> = {};
               rows.forEach((r) => (auditCount[r.auditorId] = (auditCount[r.auditorId] || 0) + 1));
               const pending = (await call(auditorIds, false)).sort((x, y) => (auditCount[y] || 0) - (auditCount[x] || 0));
@@ -945,6 +950,14 @@ export default function HomePage() {
                       <li key={m.login}>
                         <strong>{m.login}</strong> - {m.count} audit{m.count === 1 ? '' : 's'}, {m.projects} project{m.projects === 1 ? '' : 's'}
                         <br /><small>{monthYear(m.first)} - {monthYear(m.last)}</small>
+                        <details>
+                          <summary style={{ cursor: 'pointer', fontSize: 11 }}>projects</summary>
+                          <ul style={{ margin: '2px 0 6px', paddingLeft: '1.2em', fontSize: 11 }}>
+                            {m.audits.map((a, j) => (
+                              <li key={j}>{a.date.slice(0, 10)} {a.project}{a.reason ? ` (${a.reason})` : ''}</li>
+                            ))}
+                          </ul>
+                        </details>
                       </li>
                     ))}
                   </ol>
