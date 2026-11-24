@@ -327,27 +327,28 @@ export default function HomePage() {
                 .map((e) => ({ login: e.login, count: e.count, projects: e.groups.size, first: e.first, last: e.last }))
                 .sort((a, b) => b.count - a.count || a.login.localeCompare(b.login));
             };
-            // Cohorts (module events) each auditor is enrolled in. An auditor outside the audited
-            // person's cohort is treated as a mentor auditor; a same-cohort auditor was a peer unless the
-            // roster says otherwise (tech mentor, or an audit inside a dated mentor period).
-            const auditorIds = Array.from(new Set(rows.map((r) => r.auditorId)));
+            // Only people on the roster can be mentor audits. Tech mentors always count; a dated entry
+            // counts inside its period; an undated student mentor counts only when they are NOT in the
+            // audited person's cohort (a same-cohort auditor was a peer, not yet a mentor).
+            const rosterLogins = new Set(MENTOR_ROSTER.map((m) => m.login.toLowerCase()));
+            const rosterIds = Array.from(new Set(rows.filter((r) => rosterLogins.has(r.auditorLogin.toLowerCase())).map((r) => r.auditorId)));
             const cohorts: Record<number, Set<number>> = {};
-            if (auditorIds.length > 0) {
-              const eu = await fetchGraphQL(cohortQuery, { ids: auditorIds, modulePaths });
+            if (rosterIds.length > 0) {
+              const eu = await fetchGraphQL(cohortQuery, { ids: rosterIds, modulePaths });
               (eu?.event_user || []).forEach((e: { userId: number; eventId: number }) => {
                 (cohorts[e.userId] || (cohorts[e.userId] = new Set())).add(e.eventId);
               });
             }
             const wasMentor = (r: Row) => {
               const t = Date.parse(r.auditedAt || r.createdAt);
-              const rostered = MENTOR_ROSTER.some((m) => {
+              return MENTOR_ROSTER.some((m) => {
                 if (m.login.toLowerCase() !== r.auditorLogin.toLowerCase()) return false;
                 if (m.from || m.to) {
                   return (!m.from || t >= Date.parse(m.from)) && (!m.to || t <= Date.parse(m.to) + 86400000);
                 }
-                return m.kind === 'tech';
+                if (m.kind === 'tech') return true;
+                return !cohorts[r.auditorId]?.has(r.group.eventId);
               });
-              return rostered || !cohorts[r.auditorId]?.has(r.group.eventId);
             };
             setAllAuditors(summarize(rows));
             setMentors(summarize(rows.filter(wasMentor)));

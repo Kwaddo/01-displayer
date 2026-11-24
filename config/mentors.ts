@@ -1,9 +1,8 @@
-// Mentor roster. An audit counts as a mentor audit when ANY of these holds:
-//   - the auditor is not in the audited person's cohort (assumed mentor automatically), or
-//   - the auditor is a `kind: 'tech'` entry with no dates (tech mentors always count), or
-//   - the entry has `from` / `to` dates and the audit falls inside them. Use this for a mentor in
-//     the SAME cohort as the audited person, otherwise their peer-era audits would not count.
-// Undated student mentors below only document who they are; the cohort rule decides their audits.
+// Mentor roster. Only people listed here can count as mentor auditors. An audit counts when:
+//   - the entry is `kind: 'tech'` with no dates (tech mentors always count), or
+//   - the entry has `from` / `to` dates and the audit falls inside them (use this for a student
+//     mentor in the SAME cohort as the audited person), or
+//   - the entry has no dates (student mentor) and the auditor is NOT in the audited person's cohort.
 export interface MentorPeriod {
   login: string;
   kind?: 'tech' | 'auditor';
