@@ -12,12 +12,11 @@ import { useRouter } from 'next/navigation';
 import { fetchGraphQL, AuthExpiredError } from '@/utils/info';
 import { logout } from '@/utils/user';
 import styles from '@/styles/home.module.css';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUser, faSignOut, faBarChart, faChartLine, faTrophy, faGamepad, faNoteSticky, faPalette, faGun, faMedal } from '@fortawesome/free-solid-svg-icons';
 import Windows98Splash from '@/components/splash';
 import Window, { WinState } from '@/components/window';
 import { MENTOR_ROSTER } from '@/config/mentors';
 import winStyles from '@/styles/window.module.css';
+import Icon from '@/components/icons';
 
 interface Group {
   campus: string;
@@ -177,35 +176,49 @@ const WIN_SIZE: Record<WinId, [number, number]> = {
   info: [360, 300], notes: [340, 300], audit: [400, 340], levels: [400, 340], game: [440, 340],
   mentors: [380, 340], mines: [380, 440], color: [270, 130], invaders: [680, 580],
 };
+// Smallest size at which each window's content still fits and stays usable.
+const WIN_MIN: Record<WinId, [number, number]> = {
+  info: [280, 240], notes: [220, 160], audit: [320, 280], levels: [340, 280], game: [360, 300],
+  mentors: [300, 240], mines: [320, 400], color: [240, 100], invaders: [340, 320],
+};
+// Desktop shortcut labels, like file names under icons.
+const WIN_LABELS: Record<WinId, string> = {
+  info: 'User Info', notes: 'Notebook', audit: 'Audit Ratio', levels: 'User Levels', game: 'Game Info',
+  mentors: 'Auditors', mines: 'Minesweeper', color: 'Display', invaders: 'Space Invaders',
+};
+// Hidden on tablets/phones (keyboard-only game).
+const HIDE_ON_TABLET: Partial<Record<WinId, boolean>> = { invaders: true };
 const WIN_OPEN: Record<WinId, boolean> = {
   info: true, notes: true, audit: true, levels: true, game: true, mentors: true, mines: false, color: false, invaders: false,
 };
-const TASKBAR_H = 46;
+const TASKBAR_H = 30;
 const PAD = 12;
+const ICON_COL = 84; // width reserved on the left for the desktop icon column
 
 // Tile the initially-open windows in rows that fit the desktop; stack the rest in a cascade.
 function layoutAll(dw: number, dh: number): Record<WinId, WinState> {
   const out = {} as Record<WinId, WinState>;
   const narrow = dw < 700;
-  let x = PAD, y = PAD, rowH = 0, z = 10;
+  const left = narrow ? PAD : ICON_COL + PAD; // leave the icon column visible
+  let x = left, y = PAD, rowH = 0, z = 10;
   WIN_IDS.forEach((id, i) => {
-    const w = Math.min(WIN_SIZE[id][0], dw - PAD * 2);
-    const h = Math.min(WIN_SIZE[id][1], dh - PAD * 2);
+    const w = Math.max(Math.min(WIN_SIZE[id][0], dw - left - PAD), Math.min(WIN_MIN[id][0], dw));
+    const h = Math.max(Math.min(WIN_SIZE[id][1], dh - PAD * 2), Math.min(WIN_MIN[id][1], dh));
     let px: number, py: number;
     if (narrow || !WIN_OPEN[id]) {
-      px = Math.min(PAD + i * 20, Math.max(0, dw - w));
+      px = Math.min(left + i * 20, Math.max(0, dw - w));
       py = Math.min(PAD + i * 20, Math.max(0, dh - h));
     } else {
-      if (x + w > dw - PAD && x > PAD) { x = PAD; y += rowH + PAD; rowH = 0; }
+      if (x + w > dw - PAD && x > left) { x = left; y += rowH + PAD; rowH = 0; }
       px = x; py = y;
       if (py + h > dh) { // out of vertical room: overlap in a cascade instead of hiding
-        px = Math.min(PAD + i * 24, Math.max(0, dw - w));
+        px = Math.min(left + i * 24, Math.max(0, dw - w));
         py = Math.min(PAD + i * 24, Math.max(0, dh - h));
       }
       x += w + PAD;
       rowH = Math.max(rowH, h);
     }
-    out[id] = { x: px, y: py, w: narrow ? dw - PAD * 2 : w, h, z: z++, open: WIN_OPEN[id], max: false };
+    out[id] = { x: px, y: py, w: narrow ? Math.max(dw - PAD * 2, Math.min(WIN_MIN[id][0], dw)) : w, h, z: z++, open: WIN_OPEN[id], min: false, max: false };
   });
   return out;
 }
@@ -224,6 +237,7 @@ export default function HomePage() {
   const [mentors, setMentors] = useState<MentorEntry[]>([]);
   const [allAuditors, setAllAuditors] = useState<MentorEntry[]>([]);
   const [auditTab, setAuditTab] = useState<'mentors' | 'all'>('mentors');
+  const [labelsLoading, setLabelsLoading] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -331,8 +345,8 @@ export default function HomePage() {
                 .map((e) => ({ login: e.login, count: e.count, projects: e.groups.size, first: e.first, last: e.last }))
                 .sort((a, b) => b.count - a.count || a.login.localeCompare(b.login));
             };
-            // Only people on the roster can be mentor audits, and only on module projects (piscine audits
-            // are always peer audits). Dated entries count inside their periods; tech mentors always count;
+            // Only people on the roster (or with the Audit Mentor avatar) can be mentor audits. Piscine
+            // audits by student mentors are treated as peer audits. Dated entries count inside their periods; tech mentors always count;
             // an undated student mentor counts only when they are NOT in the audited person's cohort.
             const rosterLogins = new Set(MENTOR_ROSTER.map((m) => m.login.toLowerCase()));
             const rosterIds = Array.from(new Set(rows.filter((r) => rosterLogins.has(r.auditorLogin.toLowerCase())).map((r) => r.auditorId)));
@@ -364,23 +378,75 @@ export default function HomePage() {
               console.error('Failed to check mentor avatars:', avatarErr);
             }
             const sameCohort = (auditorId: number) => Array.from(cohorts[auditorId] || []).some((e) => myCohorts.has(e));
-            const wasMentor = (r: Row) => {
-              if (r.group.event?.path?.includes('piscine')) return false;
+            type Label = { labelName: string; createdAt: string };
+            const dayStart = (iso: string) => Date.parse(iso.slice(0, 10));
+            // Decision order: roster dates (manual override) > Staff label > Tech Team label date >
+            // Audit Mentor avatar date > undated roster entry.
+            const makeWasMentor = (labels: Record<number, Label[]>) => (r: Row) => {
+              const isPiscine = !!r.group.event?.path?.includes('piscine');
               const t = Date.parse(r.auditedAt || r.createdAt);
-              if (mentorSince[r.auditorId] !== undefined && t >= mentorSince[r.auditorId]) return true;
+              const login = r.auditorLogin.toLowerCase();
+              const dated = MENTOR_ROSTER.filter((m) => m.login.toLowerCase() === login && (m.from || m.to));
+              if (dated.length > 0) {
+                return dated.some((m) => (!m.from || t >= Date.parse(m.from)) && (!m.to || t <= Date.parse(m.to) + 86400000));
+              }
+              const own = labels[r.auditorId] || [];
+              if (own.some((l) => l.labelName === 'Staff')) return true;
+              const tech = own.find((l) => l.labelName === 'Tech Team');
+              if (tech && t >= dayStart(tech.createdAt)) return true;
+              if (!isPiscine && mentorSince[r.auditorId] !== undefined && t >= mentorSince[r.auditorId]) return true;
+              if (tech || mentorSince[r.auditorId] !== undefined) return false;
               return MENTOR_ROSTER.some((m) => {
-                if (m.login.toLowerCase() !== r.auditorLogin.toLowerCase()) return false;
-                if (m.from || m.to) {
-                  return (!m.from || t >= Date.parse(m.from)) && (!m.to || t <= Date.parse(m.to) + 86400000);
-                }
+                if (m.login.toLowerCase() !== login) return false;
                 if (m.kind === 'tech') return true;
-                // Undated student mentor: the Audit Mentor avatar date wins when we have it.
-                if (mentorSince[r.auditorId] !== undefined) return false;
-                return !sameCohort(r.auditorId);
+                // Piscine audits by student mentors are peer audits.
+                return !isPiscine && !sameCohort(r.auditorId);
               });
             };
             setAllAuditors(summarize(rows));
-            setMentors(summarize(rows.filter(wasMentor)));
+            setMentors(summarize(rows.filter(makeWasMentor({}))));
+
+            // Staff / Tech Team labels come from each auditor's public profile (slow endpoint), so load
+            // them in the background in small batches and refresh the leaderboard when done.
+            const platformToken = window.localStorage.getItem('jwtToken')?.replace(/^"|"$/g, '') || '';
+            const campus = modulePaths[0]?.split('/')[1] || '';
+            const auditorIds = Array.from(new Set(rows.map((r) => r.auditorId)));
+            if (platformToken && campus && auditorIds.length > 0) {
+              setLabelsLoading(true);
+              const labels: Record<number, Label[]> = {};
+              const call = async (userIds: number[], fetchMissing: boolean) => {
+                try {
+                  const res = await fetch('/api/auditorLabels', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-platform-token': platformToken },
+                    body: JSON.stringify({ userIds, campus, fetchMissing }),
+                  });
+                  if (!res.ok) return userIds;
+                  const data = await res.json();
+                  Object.assign(labels, data.labels || {});
+                  return (data.pending || []) as number[];
+                } catch (labelErr) {
+                  console.error('Failed to load auditor labels:', labelErr);
+                  return userIds;
+                }
+              };
+              // 1) everything already cached (fast), 2) slowly fill in the rest, two profiles per call.
+              const refresh = () => setMentors(summarize(rows.filter(makeWasMentor(labels))));
+              const pending = await call(auditorIds, false);
+              refresh();
+              const queue = [...pending];
+              const worker = async () => {
+                while (queue.length > 0) {
+                  const chunk = queue.splice(0, 2);
+                  await call(chunk, true);
+                  refresh();
+                }
+              };
+              Promise.all([worker(), worker()]).then(() => {
+                setMentors(summarize(rows.filter(makeWasMentor(labels))));
+                setLabelsLoading(false);
+              });
+            }
           } catch (auditErr) {
             if (auditErr instanceof AuthExpiredError) throw auditErr;
             console.error('Failed to load mentor audits:', auditErr);
@@ -412,7 +478,28 @@ export default function HomePage() {
   const [desk, setDesk] = useState({ w: 1200, h: 700 });
   const [wins, setWins] = useState<Record<WinId, WinState> | null>(null);
   const [activeId, setActiveId] = useState<WinId | null>(null);
+  const [tasks, setTasks] = useState<WinId[]>(() => WIN_IDS.filter((id) => WIN_OPEN[id]));
+  const [selectedIcon, setSelectedIcon] = useState<WinId | null>(null);
+  const [startOpen, setStartOpen] = useState(false);
+  const [clock, setClock] = useState('');
   const zTop = useRef(10);
+
+  useEffect(() => {
+    const tick = () => setClock(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+    tick();
+    const t = setInterval(tick, 15000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    if (!startOpen) return;
+    const close = (e: PointerEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !(e.target as HTMLElement).closest('[data-start]')) setStartOpen(false);
+    };
+    window.addEventListener('pointerdown', close);
+    window.addEventListener('keydown', close);
+    return () => { window.removeEventListener('pointerdown', close); window.removeEventListener('keydown', close); };
+  }, [startOpen]);
 
   useEffect(() => {
     if (!isClient) return;
@@ -429,8 +516,8 @@ export default function HomePage() {
         const next = { ...prev };
         WIN_IDS.forEach(id => {
           const w = next[id];
-          const width = Math.min(w.w, nd.w);
-          const height = Math.min(w.h, nd.h);
+          const width = Math.min(Math.max(w.w, WIN_MIN[id][0]), nd.w);
+          const height = Math.min(Math.max(w.h, WIN_MIN[id][1]), nd.h);
           next[id] = {
             ...w,
             w: width,
@@ -455,14 +542,27 @@ export default function HomePage() {
     setWins(prev => (prev ? { ...prev, [id]: { ...prev[id], ...patch } } : prev));
   }, []);
 
-  const toggleWin = (id: WinId) => {
+  // Open (or bring back) a window and put it on top.
+  const openWin = (id: WinId) => {
+    patchWin(id, { open: true, min: false, z: ++zTop.current });
+    setTasks((t) => (t.includes(id) ? t : [...t, id]));
+    setActiveId(id);
+  };
+  const minimizeWin = (id: WinId) => {
+    patchWin(id, { min: true });
+    setActiveId((a) => (a === id ? null : a));
+  };
+  const closeWin = (id: WinId) => {
+    patchWin(id, { open: false, min: false });
+    setTasks((t) => t.filter((x) => x !== id));
+    setActiveId((a) => (a === id ? null : a));
+  };
+  // Taskbar button: restore if minimized, minimize if already in front, otherwise bring to front.
+  const onTaskClick = (id: WinId) => {
     if (!wins) return;
-    if (wins[id].open) {
-      patchWin(id, { open: false });
-    } else {
-      patchWin(id, { open: true, z: ++zTop.current });
-      setActiveId(id);
-    }
+    if (wins[id].min) openWin(id);
+    else if (activeId === id) minimizeWin(id);
+    else focusWin(id);
   };
 
   useEffect(() => {
@@ -736,35 +836,46 @@ export default function HomePage() {
     <Window
       key={id}
       title={WIN_TITLES[id]}
+      icon={<Icon id={id} size={16} />}
       state={wins[id]}
       active={activeId === id}
       desktop={desk}
-      minW={minW}
-      minH={minH}
+      minW={minW ?? WIN_MIN[id][0]}
+      minH={minH ?? WIN_MIN[id][1]}
       onChange={(patch) => patchWin(id, patch)}
       onFocus={() => { if (activeId !== id) focusWin(id); }}
-      onClose={() => toggleWin(id)}
+      onMinimize={() => minimizeWin(id)}
+      onClose={() => closeWin(id)}
     >
       {content}
     </Window>
   );
 
-  const taskButtons: { id: WinId; icon: typeof faUser; hideOnTablet?: boolean }[] = [
-    { id: 'info', icon: faUser },
-    { id: 'notes', icon: faNoteSticky },
-    { id: 'audit', icon: faBarChart },
-    { id: 'levels', icon: faChartLine },
-    { id: 'game', icon: faTrophy },
-    { id: 'mentors', icon: faMedal },
-    { id: 'mines', icon: faGamepad },
-    { id: 'color', icon: faPalette },
-    { id: 'invaders', icon: faGun, hideOnTablet: true },
-  ];
-
   return (
     <>
       {showSplash && <Windows98Splash />}
-      <div className={winStyles.desktop}>
+      <div
+        className={winStyles.desktop}
+        onPointerDown={(e) => { if (e.target === e.currentTarget) { setSelectedIcon(null); setActiveId(null); } }}
+      >
+        <div className={winStyles.icons} onPointerDown={(e) => { if (e.target === e.currentTarget) setSelectedIcon(null); }}>
+          {WIN_IDS.map((id) => (
+            <button
+              key={id}
+              className={`${winStyles.deskIcon} ${selectedIcon === id ? winStyles.deskIconSelected : ''} ${HIDE_ON_TABLET[id] ? styles.hideOnTablet : ''}`}
+              onPointerDown={() => { setSelectedIcon(id); setActiveId(null); }}
+              // Mouse: double-click opens. Touch/pen: a single tap opens, like a touch-mode desktop.
+              onPointerUp={(e) => { if (e.pointerType !== 'mouse') openWin(id); }}
+              onDoubleClick={() => openWin(id)}
+              onKeyDown={(e) => { if (e.key === 'Enter') openWin(id); }}
+              onFocus={() => setSelectedIcon(id)}
+              title={WIN_TITLES[id]}
+            >
+              <span className={winStyles.deskIconImg}><Icon id={id} /></span>
+              <span className={winStyles.deskIconLabel}>{WIN_LABELS[id]}</span>
+            </button>
+          ))}
+        </div>
         {win('info', (
           <div className={styles.card}>
             <div className={styles.cardBody}>
@@ -814,6 +925,7 @@ export default function HomePage() {
                   <button className={styles.iconButton} style={{ width: 'auto', height: 24, translate: 'none', fontSize: 12, backgroundColor: tab === 'all' ? '#888b8d' : '' }} onClick={() => setAuditTab('all')}>All auditors</button>
                 </div>
                 <p><small>{list.length} auditor{list.length === 1 ? '' : 's'}, {total} completed audit{total === 1 ? '' : 's'} on you</small></p>
+                {labelsLoading && tab === 'mentors' && <p><small>Checking Staff / Tech Team labels...</small></p>}
                 {list.length === 0 ? (
                   <p>No audits found.</p>
                 ) : (
@@ -854,21 +966,53 @@ export default function HomePage() {
           </Suspense>
         ), 320, 300)}
       </div>
-      <div className={styles.windowbar}>
-        <div className={styles.buttonContainer}>
-          {taskButtons.map(({ id, icon, hideOnTablet }) => (
+      {startOpen && (
+        <div className={`${winStyles.startMenu} ${winStyles.raised}`} data-start role="menu">
+          <div className={winStyles.startBanner}><span><b>01</b>Displayer</span></div>
+          <div className={winStyles.startItems}>
+            {WIN_IDS.map((id) => (
+              <button
+                key={id}
+                role="menuitem"
+                className={`${winStyles.startItem} ${HIDE_ON_TABLET[id] ? styles.hideOnTablet : ''}`}
+                onClick={() => { openWin(id); setStartOpen(false); }}
+              >
+                <Icon id={id} size={24} />{WIN_LABELS[id]}
+              </button>
+            ))}
+            <div className={winStyles.startDivider} />
+            <button role="menuitem" className={winStyles.startItem} onClick={handleLogout}>
+              <Icon id="logoff" size={24} />Log Off {userData?.login}...
+            </button>
+          </div>
+        </div>
+      )}
+      <div className={winStyles.taskbar}>
+        <button
+          data-start
+          className={`${winStyles.raised} ${winStyles.startBtn} ${startOpen ? winStyles.pressed : ''}`}
+          onClick={() => setStartOpen((o) => !o)}
+          aria-haspopup="menu"
+          aria-expanded={startOpen}
+        >
+          <Icon id="start" size={18} />Start
+        </button>
+        <div className={winStyles.tbSep} />
+        <div className={winStyles.tasks}>
+          {tasks.map((id) => (
             <button
               key={id}
               title={WIN_TITLES[id]}
-              style={{ backgroundColor: wins[id].open ? '#888b8d' : '' }}
-              className={`${styles.iconButton} ${hideOnTablet ? styles.hideOnTablet : ''}`}
-              onClick={() => toggleWin(id)}>
-              <FontAwesomeIcon icon={icon} />
+              className={`${winStyles.raised} ${winStyles.taskBtn} ${activeId === id && !wins[id].min ? winStyles.pressed : ''}`}
+              onClick={() => onTaskClick(id)}
+            >
+              <Icon id={id} size={16} />
+              <span className={winStyles.taskLabel}>{WIN_LABELS[id]}</span>
             </button>
           ))}
-          <button className={styles.iconButton} onClick={handleLogout}>
-            <FontAwesomeIcon icon={faSignOut} />
-          </button>
+        </div>
+        <div className={winStyles.tray}>
+          <span>{clock}</span>
         </div>
       </div>
     </>

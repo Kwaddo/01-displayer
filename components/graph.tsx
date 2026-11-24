@@ -55,7 +55,7 @@ const Graph: React.FC<GraphProps> = ({
                 case 'BarChart': {
                     if (!userData) return;
                     chartOptions = {
-                        chart: { type: 'bar', height: '100%', width: 600, toolbar: { show: false } },
+                        chart: { type: 'bar', height: '100%', width: '100%', redrawOnParentResize: true, toolbar: { show: false } },
                         series: [
                             {
                                 name: 'Audit Ratio',
@@ -109,7 +109,7 @@ const Graph: React.FC<GraphProps> = ({
                 case 'XpChart': {
                     if (!xpDistribution || levelAmount === undefined) return;
                     chartOptions = {
-                        chart: { type: 'bar', height: '100%', width: 600, toolbar: { show: false } },
+                        chart: { type: 'bar', height: '100%', width: '100%', redrawOnParentResize: true, toolbar: { show: false } },
                         series: [
                             {
                                 name: 'Users',
@@ -219,7 +219,7 @@ const Graph: React.FC<GraphProps> = ({
                     );
 
                     chartOptions = {
-                        chart: { type: 'heatmap', height: '100%', width: '100%', toolbar: { show: false } },
+                        chart: { type: 'heatmap', height: '100%', width: '100%', redrawOnParentResize: true, toolbar: { show: false } },
                         tooltip: {
                             enabled: true,
                             custom: function (opts: unknown) {
@@ -326,7 +326,7 @@ const Graph: React.FC<GraphProps> = ({
             if (chart) chart.destroy();
         };
     }, [GetChart, userData, xpDistribution, gameData, levelAmount, setTotalUsers]);
-    return <div ref={chartRef} style={{ width: "100%", minHeight: 0 }}></div>;
+    return <div ref={chartRef} style={{ width: "100%", flex: "1 1 auto", minHeight: 0, overflow: "hidden" }}></div>;
 };
 
 export default Graph;
