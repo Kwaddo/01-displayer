@@ -419,7 +419,7 @@ export default function HomePage() {
           const response = await fetch('/api/insertUser', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, token: userToken }),
+            body: JSON.stringify({ userId }),
           });
 
           const data = await response.json();

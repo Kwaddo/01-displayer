@@ -5,7 +5,7 @@ const sql = neon(process.env.DATABASE_URL!);
 
 export async function POST(request: Request) {
   try {
-    const { userId, token } = await request.json();
+    const { userId } = await request.json();
     const existingUser = await sql`
       SELECT * FROM users WHERE user_id = ${userId}
     `;
@@ -17,8 +17,8 @@ export async function POST(request: Request) {
     }
 
     await sql`
-      INSERT INTO users (user_id, token)
-      VALUES (${userId}, ${token})
+      INSERT INTO users (user_id)
+      VALUES (${userId})
     `;
 
     return NextResponse.json({
