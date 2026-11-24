@@ -34,6 +34,7 @@ export const MENTOR_ROSTER: MentorPeriod[] = [
   { login: 'aaljamal', kind: 'tech' },
   { login: 'yalmasri', kind: 'tech' },
   { login: 'nqasim', kind: 'tech' },
-  { login: 'ralhalwa', kind: 'tech' },
+  // Tech mentor from the DevOps projects onward (ak1's crud-master group opened 2026-03-29).
+  { login: 'ralhalwa', kind: 'tech', from: '2026-03-29' },
   { login: 'aabdeen', kind: 'tech' },
 ];
