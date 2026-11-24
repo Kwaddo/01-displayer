@@ -11,7 +11,8 @@ export async function GET(request: Request) {
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
-    return NextResponse.json({ notebookcontent: user.notebookcontent || '' });
+    const notebookContent = user.notebookcontent || '';
+    return NextResponse.json({ notebookcontent: notebookContent });
   } catch (error) {
     console.error('Error fetching notes:', error);
     return NextResponse.json({ error: 'Failed to fetch notes' }, { status: 500 });
