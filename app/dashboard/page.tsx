@@ -73,6 +73,7 @@ const auditQuery = `query Audits($uid: Int!) {
     createdAt
     group {
       id
+      eventId
     }
   }
 }`;
@@ -88,6 +89,13 @@ const userIdQuery = `query Me { user { id } }`;
 const modulePathsQuery = `query Modules($uid: Int!) {
   event_user(where: {userId: {_eq: $uid}, event: {path: {_regex: "^/[^/]+/[^/]+-module$"}}}) {
     event { path }
+  }
+}`;
+
+const cohortQuery = `query Cohorts($ids: [Int!]!, $modulePaths: [String!]!) {
+  event_user(where: {userId: {_in: $ids}, event: {path: {_in: $modulePaths}}}) {
+    userId
+    eventId
   }
 }`;
 
@@ -303,7 +311,7 @@ export default function HomePage() {
           setGameData(gData);
           try {
             const auditData = await fetchGraphQL(auditQuery, { uid: loggedInUser.id });
-            type Row = { auditorId: number; auditorLogin: string; auditedAt: string | null; createdAt: string; group: { id: number } };
+            type Row = { auditorId: number; auditorLogin: string; auditedAt: string | null; createdAt: string; group: { id: number; eventId: number } };
             const rows: Row[] = auditData?.audit || [];
             const summarize = (list: Row[]): MentorEntry[] => {
               const stats: Record<number, MentorEntry & { groups: Set<number> }> = {};
@@ -319,14 +327,29 @@ export default function HomePage() {
                 .map((e) => ({ login: e.login, count: e.count, projects: e.groups.size, first: e.first, last: e.last }))
                 .sort((a, b) => b.count - a.count || a.login.localeCompare(b.login));
             };
-            // A mentor audit = auditor is on the roster AND the audit fell inside one of their mentor periods.
+            // Cohorts (module events) each auditor is enrolled in. A same-cohort auditor was a peer,
+            // so without an explicit mentor start date their audits are not counted as mentor audits.
+            const rosterLogins = new Set(MENTOR_ROSTER.map((m) => m.login.toLowerCase()));
+            const rosterIds = Array.from(new Set(rows.filter((r) => rosterLogins.has(r.auditorLogin.toLowerCase())).map((r) => r.auditorId)));
+            const cohorts: Record<number, Set<number>> = {};
+            if (rosterIds.length > 0) {
+              const eu = await fetchGraphQL(cohortQuery, { ids: rosterIds, modulePaths });
+              (eu?.event_user || []).forEach((e: { userId: number; eventId: number }) => {
+                (cohorts[e.userId] || (cohorts[e.userId] = new Set())).add(e.eventId);
+              });
+            }
+            // A mentor audit = auditor is on the roster AND either the audit falls inside a dated mentor
+            // period, or (undated entry) the auditor is not in the audited person's cohort.
             const wasMentor = (r: Row) => {
               const t = Date.parse(r.auditedAt || r.createdAt);
-              return MENTOR_ROSTER.some((m) =>
-                m.login.toLowerCase() === r.auditorLogin.toLowerCase() &&
-                (!m.from || t >= Date.parse(m.from)) &&
-                (!m.to || t <= Date.parse(m.to) + 86400000)
-              );
+              return MENTOR_ROSTER.some((m) => {
+                if (m.login.toLowerCase() !== r.auditorLogin.toLowerCase()) return false;
+                if (m.from || m.to) {
+                  return (!m.from || t >= Date.parse(m.from)) && (!m.to || t <= Date.parse(m.to) + 86400000);
+                }
+                if (m.kind === 'tech') return true;
+                return !cohorts[r.auditorId]?.has(r.group.eventId);
+              });
             };
             setAllAuditors(summarize(rows));
             setMentors(summarize(rows.filter(wasMentor)));
